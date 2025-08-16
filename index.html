@@ -2,79 +2,207 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
   <title>Interactive Trading Summary Builder</title>
+
+  <!-- Excel/CSV parsing library -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f8f9fa;min-height:100vh;padding:20px}
-    .container{max-width:1400px;margin:0 auto;background:#fff;border-radius:8px;padding:30px;box-shadow:0 2px 10px rgba(0,0,0,.08);border:1px solid #e9ecef}
-    .title{text-align:center;color:#495057;font-size:2.2em;margin-bottom:30px;font-weight:600}
-    .panels{display:flex;gap:30px;align-items:flex-start}
-    .left-panel,.right-panel{flex:1}
-    .summary-table{width:100%;border-collapse:collapse;background:#fff;border-radius:6px;overflow:hidden;border:1px solid #dee2e6}
-    .summary-table th{background:#6c757d;color:#fff;padding:15px 10px;font-size:13px;font-weight:600}
-    .summary-table td{padding:12px 10px;text-align:center;border-bottom:1px solid #dee2e6}
-    .summary-table tbody tr{cursor:pointer;transition:all .2s ease}
-    .summary-table tbody tr:hover{background:#f1f3f4}
-    .summary-table tbody tr.selected{background:#e3f2fd;border-left:3px solid #6c757d}
-    .positive{color:#198754;font-weight:600}
-    .negative{color:#dc3545;font-weight:600}
-    .muted{color:#6c757d}
-    .total-row{background:#f8f9fa!important;font-weight:bold;border-top:2px solid #6c757d}
-    .right-content{background:#fff;border-radius:6px;padding:20px;border:1px solid #dee2e6;max-height:800px;overflow-y:auto}
-    .category-title{border-bottom:2px solid #6c757d;padding-bottom:10px;margin-bottom:20px;color:#495057}
-    .trade-item{border:1px solid #dee2e6;border-radius:6px;padding:15px;margin:10px 0;background:#fff;transition:all .2s ease}
-    .trade-item.editing{background:#f8f9fa;border-color:#6c757d}
-    .trade-header{display:flex;justify-content:space-between;align-items:flex-start}
-    .trade-info{flex:1}
-    .trade-date{font-weight:bold;font-size:14px;margin-bottom:5px;color:#495057}
-    .trade-action{font-size:13px;color:#6c757d}
-    .trade-meta{font-size:12px;color:#868e96;margin-top:6px;line-height:1.3}
-    .trade-controls{margin-left:15px;text-align:right;min-width:120px}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
-    .pill.pos{background:#eaf7ef;color:#198754;border:1px solid #cfe9d6}
-    .pill.neg{background:#fdecee;color:#dc3545;border:1px solid #f6ccd1}
-    .trade-amount{font-weight:700;font-size:16px;margin-bottom:10px}
-    .edit-form select,.edit-form input{width:170px;padding:6px;margin-bottom:6px;border-radius:4px;border:1px solid #ced4da;display:block}
-    .btn{background:#6c757d;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px}
-    .btn-success{background:#198754}
-    .btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-    .placeholder{text-align:center;padding:50px;color:#6c757d}
-    .placeholder-icon{font-size:48px;margin-bottom:20px}
-    .features-box{background:#f8f9fa;padding:15px;border-radius:6px;margin-top:20px;text-align:left;border:1px solid #dee2e6}
-    .features-box ul{margin:0;padding-left:20px}
-    .upload-section{background:#f8f9fa;padding:20px;border-radius:6px;margin-bottom:20px;border:1px solid #dee2e6}
-    .upload-box h3{margin-bottom:15px;color:#495057;text-align:center}
-    .upload-btn{background:#198754;padding:10px 20px;font-size:14px}
-    .export-btn{background:#0d6efd;padding:10px 20px;font-size:14px}
-    .upload-hint{font-size:12px;color:#6c757d;margin:0;text-align:center}
+    /* ======= Base / Layout ======= */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --muted: #6c757d;
+      --muted-2: #868e96;
+      --border: #dee2e6;
+      --border-2: #e9ecef;
+      --shadow: 0 2px 10px rgba(0,0,0,0.08);
+      --brand: #6c757d;
+      --pos: #198754;
+      --neg: #dc3545;
+      --blue: #0d6efd;
+      --violet: #6f42c1;
+      --orange: #fd7e14;
+      --teal: #20c997;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      padding: 20px;
+      color: #343a40;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: var(--card);
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-2);
+    }
+    .title {
+      text-align: center;
+      color: #495057;
+      font-size: 2.2em;
+      margin-bottom: 30px;
+      font-weight: 600;
+    }
+
+    .panels { display: flex; gap: 30px; align-items: flex-start; }
+    .left-panel, .right-panel { flex: 1; min-width: 0; }
+
+    /* ======= Buttons / Inputs ======= */
+    .btn {
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: filter .15s ease-in-out, transform .05s ease-in-out;
+    }
+    .btn:hover { filter: brightness(0.95); }
+    .btn:active { transform: translateY(1px); }
+    .btn-success { background: var(--pos); }
+    .btn-blue { background: var(--blue); }
+    .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* ======= Upload / Intro ======= */
+    .upload-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+    .upload-box h3 { margin-bottom: 12px; color: #495057; text-align: center; }
+    .upload-hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; text-align: center; }
+
+    /* ======= Summary Table ======= */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .summary-table th {
+      background: var(--brand);
+      color: #fff;
+      padding: 14px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .summary-table td {
+      padding: 12px 10px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-table tbody tr { cursor: pointer; transition: background .15s ease; }
+    .summary-table tbody tr:hover { background: #f1f3f4; }
+    .summary-table tbody tr.selected {
+      background: #e3f2fd;
+      border-left: 3px solid var(--brand);
+    }
+    .positive { color: var(--pos); font-weight: 600; }
+    .negative { color: var(--neg); font-weight: 600; }
+    .total-row { background: #f8f9fa !important; font-weight: bold; border-top: 2px solid var(--brand); }
+
+    /* ======= Right Panel ======= */
+    .right-content {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      max-height: 800px;
+      overflow-y: auto;
+    }
+    .category-title {
+      border-bottom: 2px solid var(--brand);
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+      color: #495057;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .trade-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      margin: 10px 0;
+      background: #fff;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .trade-item.editing { background: #f8f9fa; border-color: var(--brand); }
+    .trade-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+    .trade-info { flex: 1; min-width: 0; }
+    .trade-date { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #495057; }
+    .trade-action { font-size: 13px; color: var(--muted); word-break: break-word; }
+    .trade-meta { font-size: 12px; color: var(--muted-2); margin-top: 6px; line-height: 1.25; }
+    .trade-controls { min-width: 160px; text-align: right; }
+    .trade-amount { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+    .edit-form select, .edit-form input {
+      width: 160px; padding: 6px; margin-bottom: 6px;
+      border-radius: 6px; border: 1px solid #ced4da; display: block;
+      font-size: 13px;
+    }
+
+    /* ======= Placeholder / Tips ======= */
+    .placeholder {
+      text-align: center; padding: 50px; color: var(--muted);
+    }
+    .placeholder-icon { font-size: 44px; margin-bottom: 14px; }
+    .features-box {
+      background: #f8f9fa; padding: 14px; border-radius: 8px; margin-top: 18px;
+      text-align: left; border: 1px solid var(--border);
+    }
+    .features-box h4 { margin-bottom: 8px; font-size: 14px; }
+    .features-box ul { margin-left: 18px; line-height: 1.6; }
+
+    /* ======= Utilities ======= */
+    .dim { color: var(--muted); }
+    .nowrap { white-space: nowrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1 class="title">Trading Performance Dashboard</h1>
 
+    <!-- Upload / Export Row -->
     <div class="upload-section">
       <div class="upload-box">
         <h3>Import / Export</h3>
         <div class="btn-row">
           <input type="file" id="file-upload" accept=".csv,.xlsx,.xls" style="display:none" />
-          <button class="btn upload-btn" onclick="document.getElementById('file-upload').click()">📄 Upload CSV/Excel File</button>
-          <button class="btn export-btn" onclick="exportSummaryXLS()">⬇️ Export Summary (.xls)</button>
+          <button class="btn" onclick="document.getElementById('file-upload').click()">📄 Upload CSV/Excel File</button>
+          <button class="btn btn-blue" onclick="exportSummaryXLS()">⬇️ Export Summary (.xls)</button>
           <button class="btn" onclick="resetTrades()">🗑️ Reset Trades</button>
         </div>
-        <p class="upload-hint">Upload your trading statement to automatically parse trades • Export creates an Excel-compatible .xls with summary and categorized trades</p>
+        <p class="upload-hint">
+          Upload your trading statement to automatically parse trades • Export creates an Excel-compatible .xls with summary and categorized trades
+        </p>
       </div>
     </div>
 
+    <!-- Main Panels -->
     <div class="panels">
+      <!-- Left: Summary -->
       <div class="left-panel">
         <h2>Trading Summary</h2>
         <table class="summary-table">
           <thead>
             <tr>
-              <th style="text-align:left;padding-left:12px">Category</th>
+              <th style="text-align:left">Category</th>
               <th>Trades</th>
               <th>Winning</th>
               <th>Win %</th>
@@ -86,6 +214,7 @@
         </table>
       </div>
 
+      <!-- Right: Details -->
       <div class="right-panel">
         <h2>Trade Details & Customization</h2>
         <div class="right-content" id="trade-details">
@@ -99,615 +228,628 @@
                 <li>Click any category row to view its trades</li>
                 <li>Edit individual trade amounts and categories</li>
                 <li>Summary updates automatically as you make changes</li>
-                <li>Live market P&L for assigned shares</li>
+                <li>Move trades between categories by editing them</li>
               </ul>
             </div>
           </div>
         </div>
       </div>
+      <!-- /Right -->
     </div>
+    <!-- /Panels -->
   </div>
 
-<script>
-/* ========================
-   Data & Config
-======================== */
-let trades = [];
-let selectedCategory = null;
-let editingTrade = null;
+  <script>
+    /******************************************************************
+     * DATA MODEL
+     ******************************************************************/
+    let trades = [];
+    let selectedCategory = null;
+    let editingTrade = null;
 
-const categories = {
-  put_sales:       { name: 'Put Sale Option Trades', color: '#198754' },
-  assigned_shares: { name: 'Assigned Shares from Puts', color: '#0d6efd' },
-  stock_trades:    { name: 'Outright Stock Trades',    color: '#6f42c1' },
-  asymmetric:      { name: 'Asymmetric Upside',        color: '#fd7e14' },
-  hedging:         { name: 'Hedging Trades',           color: '#dc3545' },
-  income:          { name: 'Dividends & Interest',     color: '#20c997' }
-};
+    // Price cache to avoid hammering /api/quote and causing flicker
+    const priceCache = new Map(); // key: TICKER, value: { price:number|"N/A", ts:number }
+    const PRICE_TTL_MS = 60 * 1000; // 1 minute
 
-/* ========================
-   Helpers
-======================== */
-const fmtMoney0 = (n)=> new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0}).format(Number(n||0));
-const fmtMoney2 = (n)=> new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(n||0));
-const fmtPct     = (p)=> `${(Number(p)||0).toFixed(1)}%`;
-const esc        = (s='') => String(s)
-  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+    const categories = {
+      put_sales:       { name: 'Put Sale Option Trades',     color: '#198754' },
+      assigned_shares: { name: 'Assigned Shares from Puts',  color: '#0d6efd' },
+      stock_trades:    { name: 'Outright Stock Trades',      color: '#6f42c1' },
+      asymmetric:      { name: 'Asymmetric Upside',          color: '#fd7e14' },
+      hedging:         { name: 'Hedging Trades',             color: '#dc3545' },
+      income:          { name: 'Dividends & Interest',       color: '#20c997' }
+    };
 
-/* ---------- price cache (5 min TTL) ---------- */
-const PRICE_TTL_MS = 5*60*1000;
-const priceCache = new Map(); // ticker -> {price, ts}
-
-async function getLivePrice(ticker){
-  if(!ticker) return null;
-  const key = ticker.toUpperCase();
-  const cached = priceCache.get(key);
-  const now = Date.now();
-  if (cached && (now - cached.ts) < PRICE_TTL_MS) return cached.price;
-
-  try{
-    const resp = await fetch(`/api/quote?ticker=${encodeURIComponent(key)}`, {cache:'no-store'});
-    const data = await resp.json();
-    if (data && typeof data.price === 'number' && !Number.isNaN(data.price)){
-      priceCache.set(key, {price:data.price, ts:now});
-      return data.price;
-    }
-    return null;
-  }catch(e){
-    console.error('quote proxy error:', e);
-    return null;
-  }
-}
-
-async function warmPricesFor(tradeList){
-  const tickers = Array.from(new Set(
-    tradeList
-      .filter(t => t.category==='assigned_shares' && t.ticker)
-      .map(t => t.ticker.toUpperCase())
-  ));
-  const needs = tickers.filter(t=>{
-    const c = priceCache.get(t);
-    return !c || (Date.now() - c.ts) >= PRICE_TTL_MS;
-  });
-  await Promise.all(needs.map(getLivePrice));
-}
-
-/* ---------- computed P&L per trade (uses cache) ---------- */
-function getComputedAmount(trade){
-  // Default to parsed amount for non-assignment categories
-  if (trade.category !== 'assigned_shares') return Number(trade.amount||0);
-
-  const shares = Number(trade.assigned_shares||0);
-  const avg = Number(trade.avg_cost||0);
-  const key = (trade.ticker||'').toUpperCase();
-  const cached = priceCache.get(key);
-  if (!cached || typeof cached.price!=='number') return null; // not ready yet
-
-  return (cached.price - avg) * shares;
-}
-
-/* ========================
-   Summary
-======================== */
-async function updateSummaryTable(){
-  const tbody = document.getElementById('summary-tbody');
-  tbody.innerHTML = '';
-
-  // Warm prices for all assigned_shares so summary uses live P&L
-  await warmPricesFor(trades);
-
-  const statsByCat = {};
-  Object.keys(categories).forEach(k=>{
-    const list = trades.filter(t=>t.category===k);
-    const amounts = list.map(getComputedAmount);
-    const effective = amounts.map((a,i)=>{
-      // if null (price not ready) treat as 0 for totals (and show muted color in UI where needed)
-      return (a===null)?0:Number(a||0);
-    });
-    const total = effective.reduce((s,n)=>s+Number(n||0),0);
-    const wins  = effective.filter(n=>n>0).length;
-    const count = list.length;
-    const avg   = count? total/count : 0;
-    const winPct= count? (wins/count*100):0;
-    statsByCat[k] = {count,wins,winPct,avg,total};
-  });
-
-  // Paint rows
-  Object.entries(categories).forEach(([key, info])=>{
-    const s = statsByCat[key];
-    const row = document.createElement('tr');
-    row.className = selectedCategory===key ? 'selected' : '';
-    row.onclick = () => selectCategory(key);
-    row.innerHTML = `
-      <td style="text-align:left;padding-left:12px;font-weight:${selectedCategory===key?'700':'400'}">${esc(info.name)}</td>
-      <td>${s.count}</td>
-      <td>${s.wins}</td>
-      <td class="${s.winPct>=50?'positive':'negative'}">${fmtPct(s.winPct)}</td>
-      <td class="${s.avg>=0?'positive':'negative'}">${fmtMoney0(s.avg)}</td>
-      <td class="${s.total>=0?'positive':'negative'}">${fmtMoney0(s.total)}</td>
-    `;
-    tbody.appendChild(row);
-  });
-
-  // Overall row
-  const allAmounts = trades.map(getComputedAmount).map(v => (v===null?0:Number(v||0)));
-  const overall = {
-    count: trades.length,
-    wins:  allAmounts.filter(n=>n>0).length,
-    total: allAmounts.reduce((s,n)=>s+n,0)
-  };
-  overall.avg = overall.count ? (overall.total/overall.count) : 0;
-  overall.winPct = overall.count ? (overall.wins/overall.count*100) : 0;
-
-  const totalRow = document.createElement('tr');
-  totalRow.className = 'total-row';
-  totalRow.innerHTML = `
-    <td style="text-align:left;padding-left:12px">Total</td>
-    <td>${overall.count}</td>
-    <td>${overall.wins}</td>
-    <td class="${overall.winPct>=50?'positive':'negative'}">${fmtPct(overall.winPct)}</td>
-    <td class="${overall.avg>=0?'positive':'negative'}">${fmtMoney0(overall.avg)}</td>
-    <td class="${overall.total>=0?'positive':'negative'}">${fmtMoney0(overall.total)}</td>
-  `;
-  tbody.appendChild(totalRow);
-}
-
-/* ========================
-   Trade Details (async)
-======================== */
-async function updateTradeDetails(){
-  const details = document.getElementById('trade-details');
-
-  if(!selectedCategory){
-    details.innerHTML = `
-      <div class="placeholder">
-        <div class="placeholder-icon">📊</div>
-        <h3>Select a Category</h3>
-        <p>Click on any category in the summary table to view and edit its trades.</p>
-      </div>`;
-    return;
-  }
-
-  const categoryInfo = categories[selectedCategory];
-  const list = trades.filter(t=>t.category===selectedCategory);
-
-  // Warm prices just for this panel
-  await warmPricesFor(list);
-
-  let html = `
-    <h3 class="category-title" style="color:${categoryInfo.color}">${esc(categoryInfo.name)}</h3>
-    <div>
-  `;
-
-  list.forEach(trade=>{
-    const hasOptionMeta = trade && (trade.ticker || trade.expiry || trade.strike || trade.type);
-    const isAssigned = trade.category==='assigned_shares';
-    let metaLines = '';
-    let pnlBox = '';
-    let amountDisplay = fmtMoney2(Number(trade.amount||0));
-    let pnlVal = null; // number or null
-
-    if (isAssigned){
-      // Market + P&L (upper-right)
-      const priceObj = priceCache.get((trade.ticker||'').toUpperCase());
-      const live = priceObj ? priceObj.price : null;
-      const shares = Number(trade.assigned_shares||0);
-      const avg    = Number(trade.avg_cost||0);
-
-      if (typeof live === 'number'){
-        pnlVal = (live - avg) * shares;
-        pnlBox = `<span class="pill ${pnlVal>=0?'pos':'neg'}">${pnlVal>=0?'+':''}${fmtMoney2(pnlVal)}</span>`;
-      }else{
-        pnlBox = `<span class="pill neg muted">Market: N/A</span>`;
-      }
-      amountDisplay = pnlVal===null ? '—' : fmtMoney2(pnlVal);
-
-      // Richer meta
-      metaLines += `
-        <div class="trade-meta">
-          ${trade.ticker ? `Ticker: ${esc(trade.ticker)}` : ''}
-          ${typeof trade.strike!=='undefined' && trade.strike!==null && trade.strike!=='' ? ` • Strike: ${esc(String(trade.strike))}` : ''}
-        </div>
-        <div class="trade-meta">
-          ${trade.ticker ? `Ticker: ${esc(trade.ticker)}` : ''}${trade.ticker ? ' • ' : ''}
-          Assigned: ${esc(String(trade.assigned_shares||0))} sh
-          ${typeof trade.premium_applied==='number'?` • Premium applied: ${fmtMoney2(trade.premium_applied)}`:''}
-          ${typeof trade.assignment_cost==='number'?` • Assignment cost: ${fmtMoney2(trade.assignment_cost)}`:''}
-          ${typeof trade.avg_cost==='number'?` • Avg cost: ${fmtMoney2(trade.avg_cost)}`:''}
-        </div>
-        <div class="trade-meta">
-          Market: ${typeof live==='number'?fmtMoney2(live):'N/A'}
-        </div>
-      `;
-    } else if (hasOptionMeta){
-      metaLines += `
-        <div class="trade-meta">
-          ${trade.ticker ? `Ticker: ${esc(trade.ticker)}` : ''}
-          ${trade.type ? ` • Type: ${esc(trade.type)}` : ''}
-          ${typeof trade.strike!=='undefined' && trade.strike!==null && trade.strike!=='' ? ` • Strike: ${esc(String(trade.strike))}` : ''}
-          ${trade.expiry ? ` • Expiry: ${esc(trade.expiry)}` : ''}
-        </div>`;
+    /******************************************************************
+     * HELPERS
+     ******************************************************************/
+    function calculateCategoryStats(categoryKey) {
+      const categoryTrades = trades.filter(trade => trade.category === categoryKey);
+      const totalTrades = categoryTrades.length;
+      const totalAmount = categoryTrades.reduce((sum, trade) => sum + Number(trade.amount || 0), 0);
+      const winningTrades = categoryTrades.filter(trade => Number(trade.amount) > 0).length;
+      const winningPercentage = totalTrades ? (winningTrades / totalTrades * 100) : 0;
+      const avgAmount = totalTrades ? (totalAmount / totalTrades) : 0;
+      return { totalTrades, winningTrades, winningPercentage, avgAmount, totalAmount };
     }
 
-    html += `
-      <div class="trade-item" id="trade-${trade.id}">
-        <div class="trade-header">
-          <div class="trade-info">
-            <div class="trade-date">${esc(trade.date)}</div>
-            <div class="trade-action">${esc(trade.action)}</div>
-            ${metaLines}
-          </div>
-          <div class="trade-controls">
-            <div class="trade-amount ${pnlVal===null ? 'muted' : (Number(amountDisplay.replace(/[^0-9.-]/g,''))>=0?'positive':'negative')}">
-              ${pnlVal===null ? '—' : fmtMoney0(pnlVal)}
-            </div>
-            ${pnlBox}
-            <div style="margin-top:8px">
-              ${editingTrade===trade.id ? `
-                <div class="edit-form">
-                  <select id="category-select-${trade.id}">
-                    ${Object.entries(categories).map(([key, info])=>`<option value="${key}" ${key===trade.category?'selected':''}>${esc(info.name)}</option>`).join('')}
-                  </select>
-                  <input type="number" step="0.01" id="amount-input-${trade.id}" value="${Number(trade.amount)||0}" />
-                  <button class="btn btn-success" onclick="saveTradeEdit(${trade.id})">Done</button>
-                </div>
-              ` : `<button class="btn" onclick="editTrade(${trade.id})">Edit</button>`}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  });
-
-  html += '</div>';
-  details.innerHTML = html;
-}
-
-/* ========================
-   Selection & Editing
-======================== */
-function selectCategory(categoryKey){
-  selectedCategory = (selectedCategory===categoryKey) ? null : categoryKey;
-  rebuild();
-}
-function editTrade(id){ editingTrade = id; updateTradeDetails(); }
-function saveTradeEdit(id){
-  const cSel = document.getElementById(`category-select-${id}`);
-  const aInp = document.getElementById(`amount-input-${id}`);
-  const newCat = cSel.value;
-  const newAmt = parseFloat(aInp.value)||0;
-  trades = trades.map(t => t.id===id ? {...t, category:newCat, amount:newAmt} : t);
-  editingTrade = null;
-  rebuild();
-}
-
-/* ========================
-   Import / Parse
-======================== */
-document.getElementById('file-upload').addEventListener('change', handleFileUpload);
-
-async function handleFileUpload(ev){
-  const file = ev.target.files[0];
-  if(!file) return;
-  try{
-    let rows;
-    if (file.name.toLowerCase().endsWith('.csv')){
-      rows = parseCSV(await file.text());
-    } else if (/\.(xlsx?|xls)$/i.test(file.name)){
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, {type:'array'});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json(sheet, {defval:'', raw:false});
-    } else {
-      alert('Unsupported file type. Upload CSV or Excel (.xlsx/.xls).');
-      return;
+    function calculateOverallStats() {
+      const totalTrades = trades.length;
+      const totalAmount = trades.reduce((sum, trade) => sum + Number(trade.amount || 0), 0);
+      const winningTrades = trades.filter(trade => Number(trade.amount) > 0).length;
+      const winningPercentage = totalTrades ? (winningTrades / totalTrades * 100) : 0;
+      const avgAmount = totalTrades ? (totalAmount / totalTrades) : 0;
+      return { totalTrades, winningTrades, winningPercentage, avgAmount, totalAmount };
     }
-    if (!rows || !rows.length){ alert('No rows found in the file.'); return; }
 
-    const newTrades = await parseTradeData(rows);
-    if (newTrades.length){
-      trades = [...trades, ...newTrades];
-      selectedCategory = null;
-      await rebuild();
-      alert(`Imported ${newTrades.length} trades.`);
-    } else {
-      alert('No tradable rows detected (skipped transfers/summaries).');
+    function formatCurrency(amount) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD',
+        minimumFractionDigits: 0, maximumFractionDigits: 0
+      }).format(Number(amount || 0));
     }
-  }catch(err){
-    console.error('Import error:', err);
-    alert('Error reading file. Make sure columns match your template.');
-  }finally{
-    ev.target.value = '';
-  }
-}
-
-function parseCSV(text){
-  const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
-  if(!lines.length) return [];
-  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
-  const rows = [];
-  for(let i=1;i<lines.length;i++){
-    const vals = lines[i].split(',').map(v=>v.trim().replace(/"/g,''));
-    const row = {};
-    headers.forEach((h,idx)=> row[h] = vals[idx] ?? '');
-    rows.push(row);
-  }
-  return rows;
-}
-
-/* ---------- Parse rows -> trades (with de-dupe) ---------- */
-async function parseTradeData(rows){
-  const out = [];
-  let id = trades.length ? Math.max(...trades.map(t=>t.id))+1 : 1;
-
-  const money = v=>{
-    if (v==null || v==='') return NaN;
-    return parseFloat(String(v).replace(/\$/g,'').replace(/,/g,'').replace(/\((.*)\)/,'-$1'));
-  };
-  const lower = v => String(v||'').toLowerCase();
-
-  // track net premium by ticker (for average cost context)
-  const premiumByTicker = Object.create(null);
-
-  const dedupe = new Set();
-  const keyFor = (t)=> JSON.stringify([
-    t.date,t.action,t.category,t.ticker||'',Number(t.amount||0),
-    t.assigned_shares||0,t.assignment_cost||0,t.avg_cost||0
-  ]);
-
-  function extractTickerFromPut(desc, action){
-    const s = String(desc||action||'');
-    let m = s.match(/\bPUT\b\s*\(([^)]+)\)/i);
-    if (m) return m[1].toUpperCase();
-    m = s.match(/\(([A-Z.]+)\)/);
-    if (m) return m[1].toUpperCase();
-    return null;
-  }
-  function extractTickerFromAssignment(action){
-    const m = String(action||'').match(/Bought Assigned Puts in\s+([A-Z.]+)/i);
-    return m ? m[1].toUpperCase() : null;
-  }
-
-  const getDate = r => r['Run Date'] || r['Date'] || r['Trade Date'] || r['Entry Date'] || '';
-  rows.sort((a,b)=> String(getDate(a)).localeCompare(String(getDate(b))));
-
-  for(const r of rows){
-    const date = getDate(r);
-    const action = String(r['Action']||'').trim();
-    const description = String(r['Description'] || r['Symbol'] || '').trim();
-    const qty = Number(r['Quantity']||0);
-    const price = Number(r['Price']||0);
-    const amt = money(r['Amount'] || r['P&L'] || r['Profit/Loss']);
-    if (!date || !action) continue;
-
-    const a = lower(action);
-    const d = lower(description);
-
-    // Income
-    if (a.includes('dividend') || a.includes('interest')){
-      const t = { id:id++, date, action: description||action, amount:isNaN(amt)?0:amt, category:'income' };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
+    function formatCurrency2(amount) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency', currency: 'USD',
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+      }).format(Number(amount || 0));
     }
-    // Skip transfers / reinvest
-    if (a.includes('electronic funds transfer') || a.includes('direct deposit') || a.includes('reinvestment')) continue;
+    function formatPercentage(n) { return `${(n || 0).toFixed(1)}%`; }
 
-    // Sold opening PUT → premium
-    if (a.includes('you sold opening transaction') && a.includes(' put')){
-      const tkr = extractTickerFromPut(description, action);
-      if (tkr) premiumByTicker[tkr] = (premiumByTicker[tkr]||0) + (isNaN(amt)?0:amt);
-      const t = { id:id++, date, action: description||action, amount:isNaN(amt)?0:amt, category:'put_sales', ticker:tkr||undefined };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
+    function escapeHtml(str = '') {
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
     }
-    // Calls (asymmetric)
-    if (a.includes('you bought opening transaction') && a.includes(' call')){
-      const t = { id:id++, date, action: description||action, amount:isNaN(amt)?0:amt, category:'asymmetric' };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
+
+    // Unique key for de-duplication
+    function tradeKey(t) {
+      return [
+        t.date || '',
+        t.action || '',
+        t.category || '',
+        t.ticker || '',
+        Number(t.amount || 0)
+      ].join('|');
     }
-    // Hedging example
-    if (a.includes(' put') && (a.includes(' qqq') || d.includes(' qqq'))){
-      const t = { id:id++, date, action: description||action, amount:isNaN(amt)?0:amt, category:'hedging' };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
-    }
-    // Option closes / expirations
-    if (a.includes('bought closing transaction') || a.includes('sold closing transaction') || a.startsWith('expired')){
-      const cat = a.includes(' put') ? 'put_sales' : (a.includes(' call') ? 'asymmetric' : 'stock_trades');
-      const t = { id:id++, date, action: description||action, amount:isNaN(amt)?0:amt, category:cat };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
-    }
-    // Assignments
-    if (a.includes('bought assigned puts')){
-      const tkr = extractTickerFromAssignment(action) || extractTickerFromPut(description, action) || undefined;
-      const shares = Math.abs(qty)||0;
-      const assignCost = Math.abs(isNaN(amt) ? (shares*price) : amt);
-      const premium = tkr ? (premiumByTicker[tkr]||0) : 0;
-      const netCost = shares ? (assignCost - premium) : 0;
-      const avgCost = shares ? (netCost / shares) : 0;
 
-      const t = {
-        id:id++,
-        date,
-        action: description||action,
-        amount: 0, // realized P&L zero here; live P&L computed later
-        category:'assigned_shares',
-        ticker:tkr,
-        assigned_shares:shares,
-        assignment_cost:assignCost,
-        premium_applied:premium,
-        avg_cost:avgCost,
-        strike:price||undefined
-      };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
-    }
-    // Plain stock/ETF buys/sells
-    if (a.startsWith('you bought ') || a.startsWith('you sold ')){
-      const t = { id:id++, date, action: description||action, amount:0, category:'stock_trades' };
-      const k = keyFor(t); if (!dedupe.has(k)){ out.push(t); dedupe.add(k); }
-      continue;
-    }
-  }
-  return out;
-}
-
-/* ========================
-   Export (uses computed P&L)
-======================== */
-async function exportSummaryXLS(){
-  // Ensure all prices warmed
-  await warmPricesFor(trades);
-
-  const overall = (() => {
-    const arr = trades.map(getComputedAmount).map(v=> (v===null?0:Number(v||0)));
-    const total = arr.reduce((s,n)=>s+n,0);
-    const count = trades.length;
-    const wins = arr.filter(n=>n>0).length;
-    return { total, count, wins, avg: count?total/count:0, winPct: count?wins/count*100:0 };
-  })();
-
-  const dateStr = new Date().toISOString().slice(0,10);
-
-  const summaryRows = Object.entries(categories).map(([key,info])=>{
-    const list = trades.filter(t=>t.category===key);
-    const arr = list.map(getComputedAmount).map(v=> (v===null?0:Number(v||0)));
-    const total = arr.reduce((s,n)=>s+n,0);
-    const count = list.length;
-    const wins = arr.filter(n=>n>0).length;
-    const avg = count? total/count : 0;
-    const winPct = count? wins/count*100 : 0;
-    return `
-      <tr>
-        <td style="text-align:left">${esc(info.name)}</td>
-        <td>${count}</td>
-        <td>${wins}</td>
-        <td>${winPct.toFixed(1)}%</td>
-        <td>${avg.toFixed(2)}</td>
-        <td>${total.toFixed(2)}</td>
-      </tr>`;
-  }).join('');
-
-  const summaryTable = `
-    <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;font-family:Segoe UI,Tahoma,sans-serif;font-size:12px;">
-      <thead style="background:#6c757d;color:#fff;">
-        <tr>
-          <th>Category</th><th>Trades</th><th>Winning</th><th>Win %</th><th>Avg P&L</th><th>Total P&L</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${summaryRows}
-        <tr style="font-weight:bold;background:#f3f4f6">
-          <td style="text-align:left">Total</td>
-          <td>${overall.count}</td>
-          <td>${overall.wins}</td>
-          <td>${overall.winPct.toFixed(1)}%</td>
-          <td>${overall.avg.toFixed(2)}</td>
-          <td>${overall.total.toFixed(2)}</td>
-        </tr>
-      </tbody>
-    </table>`;
-
-  const categorySections = Object.entries(categories).map(([key,info])=>{
-    const rows = trades
-      .filter(t=>t.category===key)
-      .map(t=>{
-        if (key==='assigned_shares'){
-          const live = priceCache.get((t.ticker||'').toUpperCase());
-          const price = live ? live.price : null;
-          const pnl = (price===null)? null : (price - Number(t.avg_cost||0))*Number(t.assigned_shares||0);
-          return `
-            <tr>
-              <td>${esc(t.date)}</td>
-              <td>${esc(t.ticker||'')}</td>
-              <td style="text-align:right">${esc(String(t.assigned_shares||''))}</td>
-              <td style="text-align:right">${typeof t.premium_applied==='number'?t.premium_applied.toFixed(2):''}</td>
-              <td style="text-align:right">${typeof t.assignment_cost==='number'?t.assignment_cost.toFixed(2):''}</td>
-              <td style="text-align:right">${typeof t.avg_cost==='number'?t.avg_cost.toFixed(2):''}</td>
-              <td style="text-align:right">${price===null?'':price.toFixed(2)}</td>
-              <td style="text-align:right">${pnl===null?'':pnl.toFixed(2)}</td>
-            </tr>`;
+    // Merge with de-duplication
+    function mergeTrades(newOnes) {
+      if (!Array.isArray(newOnes) || !newOnes.length) return;
+      const seen = new Set(trades.map(tradeKey));
+      for (const t of newOnes) {
+        const k = tradeKey(t);
+        if (!seen.has(k)) {
+          trades.push(t);
+          seen.add(k);
         }
-        const amt = getComputedAmount(t);
+      }
+    }
+
+    /******************************************************************
+     * UI — SUMMARY
+     ******************************************************************/
+    function updateSummaryTable() {
+      const tbody = document.getElementById('summary-tbody');
+      tbody.innerHTML = '';
+
+      Object.entries(categories).forEach(([categoryKey, categoryInfo]) => {
+        const s = calculateCategoryStats(categoryKey);
+        const tr = document.createElement('tr');
+        tr.className = selectedCategory === categoryKey ? 'selected' : '';
+        tr.onclick = () => selectCategory(categoryKey);
+        tr.innerHTML = `
+          <td style="text-align:left; font-weight:${selectedCategory === categoryKey ? 'bold' : 'normal'}">
+            ${escapeHtml(categoryInfo.name)}
+          </td>
+          <td>${s.totalTrades}</td>
+          <td>${s.winningTrades}</td>
+          <td class="${s.winningPercentage >= 50 ? 'positive' : 'negative'}">${formatPercentage(s.winningPercentage)}</td>
+          <td class="${s.avgAmount >= 0 ? 'positive' : 'negative'}">${formatCurrency(s.avgAmount)}</td>
+          <td class="${s.totalAmount >= 0 ? 'positive' : 'negative'}">${formatCurrency(s.totalAmount)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const overall = calculateOverallStats();
+      const totalRow = document.createElement('tr');
+      totalRow.className = 'total-row';
+      totalRow.innerHTML = `
+        <td style="text-align:left">Total</td>
+        <td>${overall.totalTrades}</td>
+        <td>${overall.winningTrades}</td>
+        <td class="${overall.winningPercentage >= 50 ? 'positive' : 'negative'}">${formatPercentage(overall.winningPercentage)}</td>
+        <td class="${overall.avgAmount >= 0 ? 'positive' : 'negative'}">${formatCurrency(overall.avgAmount)}</td>
+        <td class="${overall.totalAmount >= 0 ? 'positive' : 'negative'}">${formatCurrency(overall.totalAmount)}</td>
+      `;
+      tbody.appendChild(totalRow);
+    }
+
+    function selectCategory(categoryKey) {
+      selectedCategory = selectedCategory === categoryKey ? null : categoryKey;
+      updateSummaryTable();
+      updateTradeDetails();
+    }
+
+    /******************************************************************
+     * RIGHT PANEL — TRADE LIST WITH LIVE PRICE FOR ASSIGNED SHARES
+     ******************************************************************/
+    async function getLivePrice(ticker) {
+      if (!ticker) return "N/A";
+      const sym = String(ticker).trim().toUpperCase();
+      const now = Date.now();
+
+      // Cache
+      const cached = priceCache.get(sym);
+      if (cached && (now - cached.ts) < PRICE_TTL_MS) {
+        return cached.price;
+      }
+
+      try {
+        const resp = await fetch(`/api/quote?ticker=${encodeURIComponent(sym)}`, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        const price = (data && typeof data.price === 'number' && !Number.isNaN(data.price)) ? data.price : "N/A";
+        priceCache.set(sym, { price, ts: now });
+        return price;
+      } catch (err) {
+        console.error('Quote error:', err);
+        priceCache.set(sym, { price: "N/A", ts: now });
+        return "N/A";
+      }
+    }
+
+    async function updateTradeDetails() {
+      const el = document.getElementById('trade-details');
+      el.innerHTML = '';
+
+      if (!selectedCategory) {
+        el.innerHTML = `
+          <div class="placeholder">
+            <div class="placeholder-icon">📊</div>
+            <h3>Select a Category</h3>
+            <p>Click on any category in the summary table to view and edit its trades.</p>
+          </div>`;
+        return;
+      }
+
+      const info = categories[selectedCategory];
+      const catTrades = trades.filter(t => t.category === selectedCategory);
+
+      // Header
+      const h = document.createElement('div');
+      h.innerHTML = `<h3 class="category-title" style="color:${info?.color || '#495057'}">${escapeHtml(info?.name || selectedCategory)}</h3>`;
+      el.appendChild(h);
+
+      if (!catTrades.length) {
+        el.innerHTML += `<p class="dim">No trades available for this category.</p>`;
+        return;
+      }
+
+      for (const trade of catTrades) {
+        let metaBlocks = '';
+
+        // Option / meta line
+        const hasOptionMeta = trade && (trade.ticker || trade.expiry || trade.strike || trade.type);
+        if (hasOptionMeta) {
+          metaBlocks += `
+            <div class="trade-meta">
+              ${trade.ticker ? `Ticker: ${escapeHtml(trade.ticker)}` : ''}
+              ${trade.type ? ` • Type: ${escapeHtml(trade.type)}` : ''}
+              ${typeof trade.strike !== 'undefined' && trade.strike !== null && trade.strike !== '' ? ` • Strike: ${escapeHtml(String(trade.strike))}` : ''}
+              ${trade.expiry ? ` • Expiry: ${escapeHtml(trade.expiry)}` : ''}
+            </div>`;
+        }
+
+        // Assigned shares bloc — adds Market + P&L
+        if (trade.category === 'assigned_shares' && trade.ticker && typeof trade.avg_cost === 'number') {
+          const shares = Number(trade.assigned_shares || 0);
+          const live = await getLivePrice(trade.ticker);
+          const marketLine = (typeof live === 'number')
+            ? `Market: ${formatCurrency2(live)}`
+            : `Market: N/A`;
+
+          let pnlLine = '';
+          if (typeof live === 'number' && shares) {
+            const pnl = (live - trade.avg_cost) * shares;
+            pnlLine = `<div class="mono" style="font-weight:600; color:${pnl >= 0 ? 'var(--pos)' : 'var(--neg)'}">P&L: ${formatCurrency2(pnl)}</div>`;
+          }
+
+          metaBlocks += `
+            <div class="trade-meta">
+              ${trade.ticker ? `Ticker: ${escapeHtml(trade.ticker)}` : ''}
+              ${shares ? ` • Assigned: ${escapeHtml(String(shares))} sh` : ''}
+              ${typeof trade.premium_applied === 'number' ? ` • Premium applied: ${formatCurrency2(trade.premium_applied)}` : ''}
+              ${typeof trade.assignment_cost === 'number' ? ` • Assignment cost: ${formatCurrency2(trade.assignment_cost)}` : ''}
+              ${typeof trade.avg_cost === 'number' ? ` • Avg cost: ${formatCurrency2(trade.avg_cost)}` : ''}
+            </div>
+            <div class="trade-meta" style="margin-top:6px">${marketLine}</div>
+            ${pnlLine}
+          `;
+        }
+
+        const amount = Number(trade.amount) || 0;
+
+        const node = document.createElement('div');
+        node.className = `trade-item ${editingTrade === trade.id ? 'editing' : ''}`;
+        node.id = `trade-${trade.id}`;
+
+        node.innerHTML = `
+          <div class="trade-header">
+            <div class="trade-info">
+              <div class="trade-date">${escapeHtml(trade.date || '')}</div>
+              <div class="trade-action">${escapeHtml(trade.action || '')}</div>
+              ${metaBlocks}
+            </div>
+            <div class="trade-controls">
+              <div class="trade-amount ${amount >= 0 ? 'positive' : 'negative'}">
+                ${formatCurrency2(amount)}
+              </div>
+              ${editingTrade === trade.id
+                ? `<div class="edit-form">
+                    <select id="category-select-${trade.id}">
+                      ${Object.entries(categories).map(([key, info]) =>
+                        `<option value="${key}" ${key === trade.category ? 'selected' : ''}>${escapeHtml(info.name)}</option>`).join('')}
+                    </select>
+                    <input type="number" step="0.01" id="amount-input-${trade.id}" value="${amount}" />
+                    <button class="btn btn-success" onclick="saveTradeEdit(${trade.id})">Done</button>
+                  </div>`
+                : `<button class="btn" onclick="editTrade(${trade.id})">Edit</button>`}
+            </div>
+          </div>
+        `;
+        el.appendChild(node);
+      }
+    }
+
+    function editTrade(tradeId) {
+      editingTrade = tradeId;
+      updateTradeDetails();
+    }
+
+    function saveTradeEdit(tradeId) {
+      const categorySelect = document.getElementById(`category-select-${tradeId}`);
+      const amountInput = document.getElementById(`amount-input-${tradeId}`);
+      const newCategory = categorySelect ? categorySelect.value : undefined;
+      const newAmount = amountInput ? (parseFloat(amountInput.value) || 0) : undefined;
+
+      trades = trades.map(trade => {
+        if (trade.id !== tradeId) return trade;
+        return {
+          ...trade,
+          category: newCategory ?? trade.category,
+          amount: (typeof newAmount === 'number') ? newAmount : trade.amount
+        };
+      });
+
+      editingTrade = null;
+      updateSummaryTable();
+      updateTradeDetails();
+    }
+
+    /******************************************************************
+     * IMPORT HANDLERS
+     ******************************************************************/
+    document.getElementById('file-upload').addEventListener('change', handleFileUpload);
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        let rows;
+
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const text = await file.text();
+          rows = parseCSV(text);
+        } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+          const buf = await file.arrayBuffer();
+          const wb = XLSX.read(buf, { type: 'array' });
+          const sheet = wb.Sheets[wb.SheetNames[0]]; // first sheet for now
+          rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+        } else {
+          alert('Unsupported file type. Upload CSV or Excel (.xlsx/.xls).');
+          return;
+        }
+
+        if (!rows || rows.length === 0) {
+          alert('No rows found in the file.');
+          return;
+        }
+
+        const newTrades = await parseTradeData(rows);
+        // Merge with de-dupe
+        mergeTrades(newTrades);
+
+        // Reset selection and refresh
+        selectedCategory = null;
+        updateSummaryTable();
+        updateTradeDetails();
+
+        alert(`Imported ${newTrades.length} trade${newTrades.length === 1 ? '' : 's'}.`);
+      } catch (err) {
+        console.error('Import error:', err);
+        alert('Error reading file. Make sure columns match your template.');
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    function parseCSV(text) {
+      // Minimal CSV (no quoted commas). Your broker exports usually simple.
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+      if (!lines.length) return [];
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',').map(v => v.trim().replace(/"/g,''));
+        const row = {};
+        headers.forEach((h, idx) => row[h] = vals[idx] ?? '');
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    /******************************************************************
+     * PARSER (Rows -> trades)
+     ******************************************************************/
+    async function parseTradeData(rows) {
+      const out = [];
+      let id = trades.length ? Math.max(...trades.map(t => t.id)) + 1 : 1;
+
+      const money = v => {
+        if (v == null || v === '') return NaN;
+        return parseFloat(String(v).replace(/\$/g,'').replace(/,/g,'').replace(/\((.*)\)/, '-$1'));
+      };
+      const lower = v => String(v || '').toLowerCase();
+
+      // Track net premium per ticker to compute avg cost on assignment
+      const premiumByTicker = Object.create(null);
+
+      function extractTickerFromPut(desc, action) {
+        const s = String(desc || action || '');
+        let m = s.match(/\bPUT\b\s*\(([^)]+)\)/i);
+        if (m) return m[1].toUpperCase();
+        m = s.match(/\(([A-Z.]+)\)/);
+        if (m) return m[1].toUpperCase();
+        return null;
+      }
+      function extractTickerFromAssignment(action) {
+        const m = String(action||'').match(/Bought Assigned Puts in\s+([A-Z.]+)/i);
+        return m ? m[1].toUpperCase() : null;
+      }
+
+      // Pick a date column your statements use
+      const getDate = r => r['Run Date'] || r['Date'] || r['Trade Date'] || r['Entry Date'] || r['Transaction Date'] || '';
+      rows.sort((a,b) => String(getDate(a)).localeCompare(String(getDate(b))));
+
+      for (const r of rows) {
+        const date = getDate(r);
+        const action = String(r['Action'] || '').trim();
+        const description = String(r['Description'] || r['Symbol'] || '').trim();
+        const qty = Number(r['Quantity'] || 0);
+        const price = Number(r['Price'] || 0);
+        const amt = money(r['Amount'] || r['P&L'] || r['Profit/Loss']);
+
+        if (!date || !action) continue;
+
+        const a = lower(action);
+        const d = lower(description);
+
+        // Income
+        if (a.includes('dividend') || a.includes('interest')) {
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'income' });
+          continue;
+        }
+        // Skip bank/transfer noise
+        if (a.includes('electronic funds transfer') || a.includes('direct deposit') || a.includes('reinvestment')) continue;
+
+        // Sold opening PUT → premium to bucket
+        if (a.includes('you sold opening transaction') && a.includes(' put')) {
+          const tkr = extractTickerFromPut(description, action);
+          if (tkr) premiumByTicker[tkr] = (premiumByTicker[tkr] || 0) + (isNaN(amt) ? 0 : amt);
+          out.push({
+            id: id++,
+            date,
+            action: description || action,
+            amount: isNaN(amt) ? 0 : amt,
+            category: 'put_sales',
+            ticker: tkr || undefined
+          });
+          continue;
+        }
+
+        // Calls → asymmetric bucket
+        if (a.includes('you bought opening transaction') && a.includes(' call')) {
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'asymmetric' });
+          continue;
+        }
+
+        // Hedging catch (QQQ puts, etc.)
+        if (a.includes(' put') && (a.includes(' qqq') || d.includes(' qqq'))) {
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'hedging' });
+          continue;
+        }
+
+        // Option closes / expirations
+        if (a.includes('bought closing transaction') || a.includes('sold closing transaction') || a.startsWith('expired')) {
+          const cat = a.includes(' put') ? 'put_sales' : (a.includes(' call') ? 'asymmetric' : 'stock_trades');
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: cat });
+          continue;
+        }
+
+        // Assignments → compute avg cost net of premiums
+        if (a.includes('bought assigned puts')) {
+          const tkr = extractTickerFromAssignment(action) || extractTickerFromPut(description, action) || undefined;
+          const shares = Math.abs(qty) || 0;
+          // Prefer Amount column (total cash), fallback to shares*price
+          const assignCost = Math.abs(isNaN(amt) ? (shares * price) : amt);
+          const premium = tkr ? (premiumByTicker[tkr] || 0) : 0;
+          const netCost = shares ? (assignCost - premium) : 0;
+          const avgCost = shares ? (netCost / shares) : 0;
+
+          out.push({
+            id: id++,
+            date,
+            action: description || action,
+            amount: 0, // P&L zero at assignment
+            category: 'assigned_shares',
+            ticker: tkr,
+            assigned_shares: shares,
+            assignment_cost: assignCost,
+            premium_applied: premium,
+            avg_cost: avgCost,
+            strike: price || undefined
+          });
+          continue;
+        }
+
+        // Plain stock/ETF buys/sells
+        if (a.startsWith('you bought ') || a.startsWith('you sold ')) {
+          out.push({ id: id++, date, action: description || action, amount: 0, category: 'stock_trades' });
+          continue;
+        }
+      }
+
+      return out;
+    }
+
+    /******************************************************************
+     * EXPORT (Excel-compatible HTML)
+     ******************************************************************/
+    function exportSummaryXLS() {
+      const overall = calculateOverallStats();
+      const dateStr = new Date().toISOString().slice(0,10);
+
+      const summaryRows = Object.entries(categories).map(([key, info]) => {
+        const s = calculateCategoryStats(key);
         return `
           <tr>
-            <td>${esc(t.date)}</td>
-            <td>${esc(t.action)}</td>
-            <td style="text-align:right">${(amt===null?0:amt).toFixed(2)}</td>
+            <td style="text-align:left">${escapeHtml(info.name)}</td>
+            <td>${s.totalTrades}</td>
+            <td>${s.winningTrades}</td>
+            <td>${s.winningPercentage.toFixed(1)}%</td>
+            <td>${Number(s.avgAmount).toFixed(2)}</td>
+            <td>${Number(s.totalAmount).toFixed(2)}</td>
           </tr>`;
       }).join('');
 
-    const thead = key==='assigned_shares'
-      ? `<thead style="background:#e9ecef"><tr>
-           <th style="text-align:left">Date</th>
-           <th style="text-align:left">Ticker</th>
-           <th style="text-align:right">Assigned (sh)</th>
-           <th style="text-align:right">Premium Applied</th>
-           <th style="text-align:right">Assignment Cost</th>
-           <th style="text-align:right">Avg Cost/Share</th>
-           <th style="text-align:right">Market</th>
-           <th style="text-align:right">P&L</th>
-         </tr></thead>`
-      : `<thead style="background:#e9ecef"><tr>
-           <th style="text-align:left">Date</th>
-           <th style="text-align:left">Action</th>
-           <th style="text-align:right">Amount</th>
-         </tr></thead>`;
+      const summaryTable = `
+        <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse; font-family:Segoe UI, Tahoma, sans-serif; font-size:12px;">
+          <thead style="background:#6c757d; color:#fff;">
+            <tr>
+              <th>Category</th>
+              <th>Trades</th>
+              <th>Winning</th>
+              <th>Win %</th>
+              <th>Avg P&L</th>
+              <th>Total P&L</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summaryRows}
+            <tr style="font-weight:bold; background:#f3f4f6">
+              <td style="text-align:left">Total</td>
+              <td>${overall.totalTrades}</td>
+              <td>${overall.winningTrades}</td>
+              <td>${overall.winningPercentage.toFixed(1)}%</td>
+              <td>${Number(overall.avgAmount).toFixed(2)}</td>
+              <td>${Number(overall.totalAmount).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>`;
 
-    return `
-      <h3 style="margin:20px 0 6px 0;font-family:Segoe UI,Tahoma,sans-serif">${esc(info.name)}</h3>
-      <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;font-family:Segoe UI,Tahoma,sans-serif;font-size:12px;">
-        ${thead}
-        <tbody>
-          ${rows || `<tr><td colspan="${key==='assigned_shares'?8:3}" style="text-align:center;color:#6c757d">No trades</td></tr>`}
-        </tbody>
-      </table>`;
-  }).join('');
+      const categorySections = Object.entries(categories).map(([key, info]) => {
+        const rows = trades
+          .filter(t => t.category === key)
+          .map(t => {
+            if (key === 'assigned_shares') {
+              return `
+                <tr>
+                  <td>${escapeHtml(t.date)}</td>
+                  <td>${escapeHtml(t.ticker || '')}</td>
+                  <td style="text-align:right">${escapeHtml(String(t.assigned_shares || ''))}</td>
+                  <td style="mso-number-format:'0.00'; text-align:right">${typeof t.premium_applied==='number' ? Number(t.premium_applied).toFixed(2) : ''}</td>
+                  <td style="mso-number-format:'0.00'; text-align:right">${typeof t.assignment_cost==='number' ? Number(t.assignment_cost).toFixed(2) : ''}</td>
+                  <td style="mso-number-format:'0.00'; text-align:right">${typeof t.avg_cost==='number' ? Number(t.avg_cost).toFixed(2) : ''}</td>
+                </tr>`;
+            }
+            return `
+              <tr>
+                <td>${escapeHtml(t.date)}</td>
+                <td>${escapeHtml(t.action)}${t.ticker ? ` ( ${escapeHtml(t.ticker)} ${escapeHtml(String(t.strike||''))} ${escapeHtml(t.type||'')} ${escapeHtml(t.expiry||'')} )` : ''}</td>
+                <td style="mso-number-format:'0.00'; text-align:right">${Number(t.amount).toFixed(2)}</td>
+              </tr>`;
+          }).join('');
 
-  const workbookHtml = `
-  <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-    <head><meta charset="UTF-8" /><title>Trading Summary</title></head>
-    <body>
-      <h2 style="font-family:Segoe UI,Tahoma,sans-serif">Trading Summary Export — ${dateStr}</h2>
-      ${summaryTable}
-      <div style="height:20px"></div>
-      ${categorySections}
-    </body>
-  </html>`;
+        const thead = key === 'assigned_shares'
+          ? `<thead style="background:#e9ecef;"><tr>
+               <th style="text-align:left">Date</th>
+               <th style="text-align:left">Ticker</th>
+               <th style="text-align:right">Assigned (sh)</th>
+               <th style="text-align:right">Premium Applied</th>
+               <th style="text-align:right">Assignment Cost</th>
+               <th style="text-align:right">Avg Cost/Share</th>
+             </tr></thead>`
+          : `<thead style="background:#e9ecef;"><tr>
+               <th style="text-align:left">Date</th>
+               <th style="text-align:left">Action</th>
+               <th style="text-align:right">Amount</th>
+             </tr></thead>`;
 
-  const blob = new Blob([workbookHtml], {type:'application/vnd.ms-excel;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `trading-summary-${dateStr}.xls`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
+        return `
+          <h3 style="margin:20px 0 6px 0; font-family:Segoe UI, Tahoma, sans-serif;">${escapeHtml(info.name)}</h3>
+          <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse; font-family:Segoe UI, Tahoma, sans-serif; font-size:12px;">
+            ${thead}
+            <tbody>
+              ${rows || `<tr><td colspan="${key==='assigned_shares'?6:3}" style="text-align:center; color:#6c757d">No trades</td></tr>`}
+            </tbody>
+          </table>`;
+      }).join('');
 
-/* ========================
-   Reset & Boot
-======================== */
-function resetTrades(){
-  if(confirm('Are you sure you want to wipe all trades? This cannot be undone.')){
-    trades = [];
-    selectedCategory = null;
-    editingTrade = null;
-    rebuild();
-  }
-}
+      const workbookHtml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="UTF-8" /><title>Trading Summary</title></head>
+        <body>
+          <h2 style="font-family:Segoe UI, Tahoma, sans-serif;">Trading Summary Export — ${dateStr}</h2>
+          ${summaryTable}
+          <div style="height:20px"></div>
+          ${categorySections}
+        </body>
+        </html>`;
 
-async function rebuild(){
-  await updateSummaryTable();
-  await updateTradeDetails();
-}
+      const blob = new Blob([workbookHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `trading-summary-${dateStr}.xls`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
 
-/* init */
-rebuild();
-</script>
+    /******************************************************************
+     * RESET
+     ******************************************************************/
+    function resetTrades() {
+      if (confirm("Are you sure you want to wipe all trades? This cannot be undone.")) {
+        trades = [];
+        selectedCategory = null;
+        editingTrade = null;
+        updateSummaryTable();
+        updateTradeDetails();
+      }
+    }
+
+    /******************************************************************
+     * BOOT
+     ******************************************************************/
+    updateSummaryTable();
+    updateTradeDetails();
+  </script>
 </body>
 </html>
