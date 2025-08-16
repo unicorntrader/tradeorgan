@@ -74,11 +74,12 @@
         <div class="upload-section">
             <div class="upload-box">
                 <h3>Import / Export</h3>
-                <div class="btn-row">
-                    <input type="file" id="file-upload" accept=".csv,.xlsx,.xls" style="display:none" />
-                    <button class="btn upload-btn" onclick="document.getElementById('file-upload').click()">📄 Upload CSV/Excel File</button>
-                    <button class="btn export-btn" onclick="exportSummaryXLS()">⬇️ Export Summary (.xls)</button>
-                </div>
+              <div class="btn-row">
+    <input type="file" id="file-upload" accept=".csv,.xlsx,.xls" style="display:none" />
+    <button class="btn upload-btn" onclick="document.getElementById('file-upload').click()">📄 Upload CSV/Excel File</button>
+    <button class="btn export-btn" onclick="exportSummaryXLS()">⬇️ Export Summary (.xls)</button>
+    <button class="btn" onclick="resetTrades()">🗑️ Reset Trades</button>
+</div>
                 <p class="upload-hint">Upload your trading statement to automatically parse trades • Export creates an Excel-compatible .xls with summary and categorized trades</p>
             </div>
         </div>
