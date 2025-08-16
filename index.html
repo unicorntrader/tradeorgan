@@ -1,277 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Interactive Trading Summary Builder</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-        }
-        
-        .title {
-            text-align: center;
-            color: #495057;
-            font-size: 2.2em;
-            margin-bottom: 30px;
-            font-weight: 600;
-        }
-        
-        .panels {
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-        }
-        
-        .left-panel, .right-panel {
-            flex: 1;
-        }
-        
-        .summary-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid #dee2e6;
-        }
-        
-        .summary-table th {
-            background: #6c757d;
-            color: white;
-            padding: 15px 10px;
-            font-size: 13px;
-            font-weight: 600;
-        }
-        
-        .summary-table td {
-            padding: 12px 10px;
-            text-align: center;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .summary-table tbody tr {
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .summary-table tbody tr:hover {
-            background-color: #f1f3f4;
-        }
-        
-        .summary-table tbody tr.selected {
-            background-color: #e3f2fd;
-            border-left: 3px solid #6c757d;
-        }
-        
-        .positive {
-            color: #198754;
-            font-weight: 600;
-        }
-        
-        .negative {
-            color: #dc3545;
-            font-weight: 600;
-        }
-        
-        .total-row {
-            background: #f8f9fa !important;
-            font-weight: bold;
-            border-top: 2px solid #6c757d;
-        }
-        
-        .right-content {
-            background: white;
-            border-radius: 6px;
-            padding: 20px;
-            border: 1px solid #dee2e6;
-            max-height: 800px;
-            overflow-y: auto;
-        }
-        
-        .category-title {
-            border-bottom: 2px solid #6c757d;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            color: #495057;
-        }
-        
-        .trade-item {
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 15px;
-            margin: 10px 0;
-            background: white;
-            transition: all 0.2s ease;
-        }
-        
-        .trade-item.editing {
-            background: #f8f9fa;
-            border-color: #6c757d;
-        }
-        
-        .trade-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        
-        .trade-info {
-            flex: 1;
-        }
-        
-        .trade-date {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 5px;
-            color: #495057;
-        }
-        
-        .trade-action {
-            font-size: 13px;
-            color: #6c757d;
-        }
-        
-        .trade-controls {
-            margin-left: 15px;
-            text-align: right;
-        }
-        
-        .trade-amount {
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-        
-        .edit-form select, .edit-form input {
-            width: 150px;
-            padding: 5px;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            border: 1px solid #ced4da;
-            display: block;
-        }
-        
-        .btn {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        
-        .btn-success {
-            background: #198754;
-        }
-        
-        .placeholder {
-            text-align: center;
-            padding: 50px;
-            color: #6c757d;
-        }
-        
-        .placeholder-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        
-        .features-box {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin-top: 20px;
-            text-align: left;
-            border: 1px solid #dee2e6;
-        }
-        
-        .features-box ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .upload-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border: 1px solid #dee2e6;
-            text-align: center;
-        }
-        
-        .upload-box h3 {
-            margin-bottom: 15px;
-            color: #495057;
-        }
-        
-        .upload-btn {
-            background: #198754;
-            padding: 10px 20px;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        
-        .upload-hint {
-            font-size: 12px;
-            color: #6c757d;
-            margin: 0;
-        }
-        
-        .summary-stats {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border: 1px solid #dee2e6;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            text-align: center;
-        }
-        
-        .stat-item {
-            padding: 10px;
-        }
-        
-        .stat-value {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #6c757d;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e9ecef; }
+        .title { text-align: center; color: #495057; font-size: 2.2em; margin-bottom: 30px; font-weight: 600; }
+        .panels { display: flex; gap: 30px; align-items: flex-start; }
+        .left-panel, .right-panel { flex: 1; }
+        .summary-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid #dee2e6; }
+        .summary-table th { background: #6c757d; color: #fff; padding: 15px 10px; font-size: 13px; font-weight: 600; }
+        .summary-table td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #dee2e6; }
+        .summary-table tbody tr { cursor: pointer; transition: all 0.2s ease; }
+        .summary-table tbody tr:hover { background-color: #f1f3f4; }
+        .summary-table tbody tr.selected { background-color: #e3f2fd; border-left: 3px solid #6c757d; }
+        .positive { color: #198754; font-weight: 600; }
+        .negative { color: #dc3545; font-weight: 600; }
+        .total-row { background: #f8f9fa !important; font-weight: bold; border-top: 2px solid #6c757d; }
+        .right-content { background: #fff; border-radius: 6px; padding: 20px; border: 1px solid #dee2e6; max-height: 800px; overflow-y: auto; }
+        .category-title { border-bottom: 2px solid #6c757d; padding-bottom: 10px; margin-bottom: 20px; color: #495057; }
+        .trade-item { border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin: 10px 0; background: #fff; transition: all 0.2s ease; }
+        .trade-item.editing { background: #f8f9fa; border-color: #6c757d; }
+        .trade-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .trade-info { flex: 1; }
+        .trade-date { font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #495057; }
+        .trade-action { font-size: 13px; color: #6c757d; }
+        .trade-controls { margin-left: 15px; text-align: right; }
+        .trade-amount { font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+        .edit-form select, .edit-form input { width: 150px; padding: 5px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #ced4da; display: block; }
+        .btn { background: #6c757d; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-success { background: #198754; }
+        .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .placeholder { text-align: center; padding: 50px; color: #6c757d; }
+        .placeholder-icon { font-size: 48px; margin-bottom: 20px; }
+        .features-box { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px; text-align: left; border: 1px solid #dee2e6; }
+        .features-box ul { margin: 0; padding-left: 20px; }
+        .upload-section { background: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #dee2e6; }
+        .upload-box h3 { margin-bottom: 15px; color: #495057; text-align: center; }
+        .upload-btn { background: #198754; padding: 10px 20px; font-size: 14px; }
+        .export-btn { background: #0d6efd; padding: 10px 20px; font-size: 14px; }
+        .upload-hint { font-size: 12px; color: #6c757d; margin: 0; text-align: center; }
+        .summary-stats { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #dee2e6; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center; }
+        .stat-item { padding: 10px; }
+        .stat-value { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { font-size: 12px; color: #6c757d; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1 class="title">Trading Performance Dashboard</h1>
-        
+
         <div class="summary-stats">
             <div class="stats-grid">
                 <div class="stat-item">
@@ -288,20 +70,20 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="upload-section">
             <div class="upload-box">
-                <h3>Import Trading Statement</h3>
-                <input type="file" id="file-upload" accept=".csv,.xlsx,.xls" style="display: none;">
-                <button class="btn upload-btn" onclick="document.getElementById('file-upload').click()">
-                    📄 Upload CSV/Excel File
-                </button>
-                <p class="upload-hint">Upload your trading statement to automatically parse trades</p>
+                <h3>Import / Export</h3>
+                <div class="btn-row">
+                    <input type="file" id="file-upload" accept=".csv,.xlsx,.xls" style="display:none" />
+                    <button class="btn upload-btn" onclick="document.getElementById('file-upload').click()">📄 Upload CSV/Excel File</button>
+                    <button class="btn export-btn" onclick="exportSummaryXLS()">⬇️ Export Summary (.xls)</button>
+                </div>
+                <p class="upload-hint">Upload your trading statement to automatically parse trades • Export creates an Excel-compatible .xls with summary and categorized trades</p>
             </div>
         </div>
-        
+
         <div class="panels">
-            <!-- Left Panel - Summary Table -->
             <div class="left-panel">
                 <h2>Trading Summary (As of 8/15/2025)</h2>
                 <table class="summary-table">
@@ -315,13 +97,10 @@
                             <th>Total P&L</th>
                         </tr>
                     </thead>
-                    <tbody id="summary-tbody">
-                        <!-- Rows will be populated by JavaScript -->
-                    </tbody>
+                    <tbody id="summary-tbody"></tbody>
                 </table>
             </div>
-            
-            <!-- Right Panel - Trade Details -->
+
             <div class="right-panel">
                 <h2>Trade Details & Customization</h2>
                 <div class="right-content" id="trade-details">
@@ -345,9 +124,10 @@
     </div>
 
     <script>
-        // Updated trade data based on the detailed spreadsheet
+        // ----------------------
+        // Data Model
+        // ----------------------
         const originalTrades = [
-            // Put Sale Option Trades
             { id: 1, date: '30/05/2025', action: 'PUT (BAH) Booz Allen Hamilton July 18, 2025 $100', amount: 289.32, category: 'put_sales' },
             { id: 2, date: '30/05/2025', action: 'PUT (VG) Venture Global Aug 15, 2025 $10 (Early Close)', amount: 506.48, category: 'put_sales' },
             { id: 3, date: '30/05/2025', action: 'PUT (SOC) Sable Offshore Aug 15, 2025 $30 (Assigned)', amount: 986.64, category: 'put_sales' },
@@ -361,25 +141,15 @@
             { id: 11, date: '28/07/2025', action: 'PUT (NLY) Annaly Capital Oct 17, 2025 $20 (Open)', amount: 36.62, category: 'put_sales' },
             { id: 12, date: '28/07/2025', action: 'PUT (PM) Philip Morris Oct 17, 2025 $160 (Open)', amount: 308.32, category: 'put_sales' },
             { id: 13, date: '01/08/2025', action: 'PUT (ERJ) Embraer Aug 15, 2025 $60 (Assigned)', amount: 385.33, category: 'put_sales' },
-            
-            // Assigned Shares from Put Sales (unrealized gains)
             { id: 14, date: '30/05/2025', action: 'VNOM - Assigned Shares (100 @ $37.06)', amount: 73.32, category: 'assigned_shares' },
             { id: 15, date: '30/05/2025', action: 'SOC - Assigned Shares (200 @ $25.07)', amount: 496.64, category: 'assigned_shares' },
             { id: 16, date: '01/08/2025', action: 'ERJ - Assigned Shares (100 @ $56.15)', amount: 137.33, category: 'assigned_shares' },
-            
-            // Outright Stock Trades
             { id: 17, date: '03/06/2025', action: 'TFPM - Triple Flag Precious Metals (200 shares)', amount: 142.00, category: 'stock_trades' },
             { id: 18, date: '20/06/2025', action: 'BUR - Burford Capital (300 shares)', amount: 510.00, category: 'stock_trades' },
-            
-            // Asymmetric Upside
             { id: 19, date: '30/05/2025', action: 'CALL (BTI) British American Tobacco Jan 15, 2027 $50', amount: 3321.60, category: 'asymmetric' },
-            
-            // Hedging Trades
             { id: 20, date: '13/06/2025', action: 'TLT - iShares 20 Year+ Treasury Bond ETF (200 shares)', amount: -74.98, category: 'hedging' },
             { id: 21, date: '01/07/2025', action: 'PUT (QQQ) Nasdaq ETF Jan 16, 2026 Protection', amount: -400.68, category: 'hedging' },
             { id: 22, date: '28/07/2025', action: 'NLY - Annaly Capital Management (1000 shares)', amount: 17.59, category: 'hedging' },
-            
-            // Income from Dividends & Interest
             { id: 23, date: '30/05/2025', action: 'SPAXX - Fidelity Money Market Interest', amount: 140.11, category: 'income' },
             { id: 24, date: '30/06/2025', action: 'SPAXX - Fidelity Money Market Interest', amount: 290.31, category: 'income' },
             { id: 25, date: '07/07/2025', action: 'TLT - iShares 20 Year+ Treasury Bond ETF Dividend', amount: 65.66, category: 'income' },
@@ -399,65 +169,48 @@
             income: { name: 'Dividends & Interest', color: '#20c997' }
         };
 
+        // ----------------------
+        // Helpers
+        // ----------------------
         function calculateCategoryStats(categoryKey) {
             const categoryTrades = trades.filter(trade => trade.category === categoryKey);
             const totalTrades = categoryTrades.length;
-            const totalAmount = categoryTrades.reduce((sum, trade) => sum + trade.amount, 0);
-            const winningTrades = categoryTrades.filter(trade => trade.amount > 0).length;
+            const totalAmount = categoryTrades.reduce((sum, trade) => sum + Number(trade.amount || 0), 0);
+            const winningTrades = categoryTrades.filter(trade => Number(trade.amount) > 0).length;
             const winningPercentage = totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0;
             const avgAmount = totalTrades > 0 ? totalAmount / totalTrades : 0;
-            
-            return {
-                totalTrades,
-                winningTrades,
-                winningPercentage,
-                avgAmount,
-                totalAmount
-            };
+            return { totalTrades, winningTrades, winningPercentage, avgAmount, totalAmount };
         }
 
         function calculateOverallStats() {
             const totalTrades = trades.length;
-            const totalAmount = trades.reduce((sum, trade) => sum + trade.amount, 0);
-            const winningTrades = trades.filter(trade => trade.amount > 0).length;
+            const totalAmount = trades.reduce((sum, trade) => sum + Number(trade.amount || 0), 0);
+            const winningTrades = trades.filter(trade => Number(trade.amount) > 0).length;
             const winningPercentage = totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0;
             const avgAmount = totalTrades > 0 ? totalAmount / totalTrades : 0;
-            
-            return {
-                totalTrades,
-                winningTrades,
-                winningPercentage,
-                avgAmount,
-                totalAmount
-            };
+            return { totalTrades, winningTrades, winningPercentage, avgAmount, totalAmount };
         }
 
         function formatCurrency(amount) {
-            return new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(amount);
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(amount || 0));
         }
+        function formatPercentage(percentage) { return `${percentage.toFixed(1)}%`; }
+        function escapeHtml(str = '') { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
-        function formatPercentage(percentage) {
-            return `${percentage.toFixed(1)}%`;
-        }
-
+        // ----------------------
+        // UI Rendering
+        // ----------------------
         function updateSummaryTable() {
             const tbody = document.getElementById('summary-tbody');
             tbody.innerHTML = '';
 
-            // Add category rows
             Object.entries(categories).forEach(([categoryKey, categoryInfo]) => {
                 const stats = calculateCategoryStats(categoryKey);
                 const row = document.createElement('tr');
                 row.className = selectedCategory === categoryKey ? 'selected' : '';
                 row.onclick = () => selectCategory(categoryKey);
-                
                 row.innerHTML = `
-                    <td style="text-align: left; font-weight: ${selectedCategory === categoryKey ? 'bold' : 'normal'}">${categoryInfo.name}</td>
+                    <td style="text-align:left; font-weight:${selectedCategory === categoryKey ? 'bold' : 'normal'}">${escapeHtml(categoryInfo.name)}</td>
                     <td>${stats.totalTrades}</td>
                     <td>${stats.winningTrades}</td>
                     <td class="${stats.winningPercentage >= 50 ? 'positive' : 'negative'}">${formatPercentage(stats.winningPercentage)}</td>
@@ -467,12 +220,11 @@
                 tbody.appendChild(row);
             });
 
-            // Add total row
             const overallStats = calculateOverallStats();
             const totalRow = document.createElement('tr');
             totalRow.className = 'total-row';
             totalRow.innerHTML = `
-                <td style="text-align: left">Total</td>
+                <td style="text-align:left">Total</td>
                 <td>${overallStats.totalTrades}</td>
                 <td>${overallStats.winningTrades}</td>
                 <td class="${overallStats.winningPercentage >= 50 ? 'positive' : 'negative'}">${formatPercentage(overallStats.winningPercentage)}</td>
@@ -490,7 +242,6 @@
 
         function updateTradeDetails() {
             const detailsContainer = document.getElementById('trade-details');
-            
             if (!selectedCategory) {
                 detailsContainer.innerHTML = `
                     <div class="placeholder">
@@ -513,92 +264,65 @@
 
             const categoryInfo = categories[selectedCategory];
             const categoryTrades = trades.filter(trade => trade.category === selectedCategory);
-            
             let html = `
-                <h3 class="category-title" style="color: ${categoryInfo.color}">${categoryInfo.name}</h3>
+                <h3 class="category-title" style="color:${categoryInfo.color}">${escapeHtml(categoryInfo.name)}</h3>
                 <div>
             `;
-
             categoryTrades.forEach(trade => {
                 html += `
                     <div class="trade-item ${editingTrade === trade.id ? 'editing' : ''}" id="trade-${trade.id}">
                         <div class="trade-header">
                             <div class="trade-info">
-                                <div class="trade-date">${trade.date}</div>
-                                <div class="trade-action">${trade.action}</div>
+                                <div class="trade-date">${escapeHtml(trade.date)}</div>
+                                <div class="trade-action">${escapeHtml(trade.action)}</div>
                             </div>
                             <div class="trade-controls">
-                                <div class="trade-amount ${trade.amount >= 0 ? 'positive' : 'negative'}">
-                                    ${formatCurrency(trade.amount)}
-                                </div>
-                                ${editingTrade === trade.id ? 
-                                    `<div class="edit-form">
+                                <div class="trade-amount ${Number(trade.amount) >= 0 ? 'positive' : 'negative'}">${formatCurrency(trade.amount)}</div>
+                                ${editingTrade === trade.id ? `
+                                    <div class="edit-form">
                                         <select id="category-select-${trade.id}">
-                                            ${Object.entries(categories).map(([key, info]) => 
-                                                `<option value="${key}" ${key === trade.category ? 'selected' : ''}>${info.name}</option>`
-                                            ).join('')}
+                                            ${Object.entries(categories).map(([key, info]) => `<option value="${key}" ${key === trade.category ? 'selected' : ''}>${escapeHtml(info.name)}</option>`).join('')}
                                         </select>
-                                        <input type="number" step="0.01" id="amount-input-${trade.id}" value="${trade.amount}">
+                                        <input type="number" step="0.01" id="amount-input-${trade.id}" value="${Number(trade.amount)}" />
                                         <button class="btn btn-success" onclick="saveTradeEdit(${trade.id})">Done</button>
-                                    </div>` : 
-                                    `<button class="btn" onclick="editTrade(${trade.id})">Edit</button>`
-                                }
+                                    </div>` : `<button class="btn" onclick="editTrade(${trade.id})">Edit</button>`}
                             </div>
                         </div>
                     </div>
                 `;
             });
-
             html += '</div>';
             detailsContainer.innerHTML = html;
         }
 
-        function editTrade(tradeId) {
-            editingTrade = tradeId;
-            updateTradeDetails();
-        }
-
+        function editTrade(tradeId) { editingTrade = tradeId; updateTradeDetails(); }
         function saveTradeEdit(tradeId) {
             const categorySelect = document.getElementById(`category-select-${tradeId}`);
             const amountInput = document.getElementById(`amount-input-${tradeId}`);
-            
             const newCategory = categorySelect.value;
             const newAmount = parseFloat(amountInput.value) || 0;
-            
-            trades = trades.map(trade => 
-                trade.id === tradeId 
-                    ? { ...trade, category: newCategory, amount: newAmount }
-                    : trade
-            );
-            
+            trades = trades.map(trade => trade.id === tradeId ? { ...trade, category: newCategory, amount: newAmount } : trade);
             editingTrade = null;
             updateSummaryTable();
             updateTradeDetails();
         }
 
-        // Initialize the application
-        updateSummaryTable();
-        updateTradeDetails();
-        
-        // File upload handling
+        // ----------------------
+        // Import Handlers
+        // ----------------------
         document.getElementById('file-upload').addEventListener('change', handleFileUpload);
-        
         async function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
             try {
                 let data;
-                
                 if (file.name.endsWith('.csv')) {
                     const text = await file.text();
                     data = parseCSV(text);
                 } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    // For Excel files, we'd need a library like SheetJS
                     alert('Excel parsing coming soon. Please use CSV format for now.');
                     return;
                 }
-                
                 if (data && data.length > 0) {
                     const newTrades = await parseTradeData(data);
                     if (newTrades.length > 0) {
@@ -608,71 +332,156 @@
                         alert(`Successfully imported ${newTrades.length} trades!`);
                     }
                 }
-                
             } catch (error) {
                 console.error('Error parsing file:', error);
                 alert('Error parsing file. Please check the format and try again.');
             }
         }
-        
+
         function parseCSV(text) {
-            const lines = text.split('\n');
+            const lines = text.split(/\r?\n/);
+            if (!lines.length) return [];
             const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
             const data = [];
-            
             for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim()) {
-                    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                    const row = {};
-                    headers.forEach((header, index) => {
-                        row[header] = values[index] || '';
-                    });
-                    data.push(row);
-                }
+                if (!lines[i] || !lines[i].trim()) continue;
+                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+                const row = {};
+                headers.forEach((header, index) => { row[header] = values[index] || ''; });
+                data.push(row);
             }
-            
             return data;
         }
-        
+
         async function parseTradeData(data) {
             const newTrades = [];
             let tradeId = Math.max(...trades.map(t => t.id)) + 1;
-            
             for (const row of data) {
-                // Look for common column names in trading statements
                 const date = row['Date'] || row['Trade Date'] || row['Entry Date'] || '';
                 const description = row['Description'] || row['Symbol'] || row['Action'] || '';
                 const amount = parseFloat(row['Amount'] || row['P&L'] || row['Profit/Loss'] || '0');
-                
                 if (date && description && !isNaN(amount)) {
-                    // Auto-categorize based on description keywords
-                    let category = 'stock_trades'; // default
-                    
-                    const desc = description.toLowerCase();
-                    if (desc.includes('put') && !desc.includes('assigned')) {
-                        category = 'put_sales';
-                    } else if (desc.includes('call')) {
-                        category = 'asymmetric';
-                    } else if (desc.includes('assigned') || desc.includes('assignment')) {
-                        category = 'assigned_shares';
-                    } else if (desc.includes('dividend') || desc.includes('interest')) {
-                        category = 'income';
-                    } else if (desc.includes('hedge') || desc.includes('tlt') || desc.includes('qqq')) {
-                        category = 'hedging';
-                    }
-                    
-                    newTrades.push({
-                        id: tradeId++,
-                        date: date,
-                        action: description,
-                        amount: amount,
-                        category: category
-                    });
+                    let category = 'stock_trades';
+                    const desc = String(description).toLowerCase();
+                    if (desc.includes('put') && !desc.includes('assigned')) category = 'put_sales';
+                    else if (desc.includes('call')) category = 'asymmetric';
+                    else if (desc.includes('assigned') || desc.includes('assignment')) category = 'assigned_shares';
+                    else if (desc.includes('dividend') || desc.includes('interest')) category = 'income';
+                    else if (desc.includes('hedge') || desc.includes('tlt') || desc.includes('qqq')) category = 'hedging';
+                    newTrades.push({ id: tradeId++, date, action: description, amount, category });
                 }
             }
-            
             return newTrades;
         }
+
+        // ----------------------
+        // XLS Export (Excel-compatible)
+        // ----------------------
+        function exportSummaryXLS() {
+            // Build HTML workbook: summary table + categorized trade tables
+            const overall = calculateOverallStats();
+            const dateStr = new Date().toISOString().slice(0,10);
+
+            // Summary rows
+            const summaryRows = Object.entries(categories).map(([key, info]) => {
+                const s = calculateCategoryStats(key);
+                return `
+                    <tr>
+                        <td style="text-align:left">${escapeHtml(info.name)}</td>
+                        <td>${s.totalTrades}</td>
+                        <td>${s.winningTrades}</td>
+                        <td>${s.winningPercentage.toFixed(1)}%</td>
+                        <td>${Number(s.avgAmount).toFixed(2)}</td>
+                        <td>${Number(s.totalAmount).toFixed(2)}</td>
+                    </tr>`;
+            }).join('');
+
+            const summaryTable = `
+                <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse; font-family:Segoe UI, Tahoma, sans-serif; font-size:12px;">
+                    <thead style="background:#6c757d; color:#fff;">
+                        <tr>
+                            <th>Category</th>
+                            <th>Trades</th>
+                            <th>Winning</th>
+                            <th>Win %</th>
+                            <th>Avg P&L</th>
+                            <th>Total P&L</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${summaryRows}
+                        <tr style="font-weight:bold; background:#f3f4f6">
+                            <td style="text-align:left">Total</td>
+                            <td>${overall.totalTrades}</td>
+                            <td>${overall.winningTrades}</td>
+                            <td>${overall.winningPercentage.toFixed(1)}%</td>
+                            <td>${Number(overall.avgAmount).toFixed(2)}</td>
+                            <td>${Number(overall.totalAmount).toFixed(2)}</td>
+                        </tr>
+                    </tbody>
+                </table>`;
+
+            // Categorized trades (grouped under the summary)
+            const categorySections = Object.entries(categories).map(([key, info]) => {
+                const rows = trades
+                    .filter(t => t.category === key)
+                    .map(t => `
+                        <tr>
+                            <td>${escapeHtml(t.date)}</td>
+                            <td>${escapeHtml(t.action)}</td>
+                            <td style="mso-number-format:'0.00'; text-align:right">${Number(t.amount).toFixed(2)}</td>
+                        </tr>`).join('');
+                return `
+                    <h3 style="margin:20px 0 6px 0; font-family:Segoe UI, Tahoma, sans-serif;">${escapeHtml(info.name)}</h3>
+                    <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse; font-family:Segoe UI, Tahoma, sans-serif; font-size:12px;">
+                        <thead style="background:#e9ecef;">
+                            <tr>
+                                <th style="text-align:left">Date</th>
+                                <th style="text-align:left">Action</th>
+                                <th style="text-align:right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows || `<tr><td colspan="3" style="text-align:center; color:#6c757d">No trades</td></tr>`}
+                        </tbody>
+                    </table>`;
+            }).join('');
+
+            const workbookHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                    <meta charset="UTF-8" />
+                    <!-- Excel styling hint -->
+                    <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+                        <x:Name>Summary</x:Name>
+                        <x:WorksheetOptions><x:Selected/></x:WorksheetOptions>
+                    </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+                    <title>Trading Summary</title>
+                </head>
+                <body>
+                    <h2 style="font-family:Segoe UI, Tahoma, sans-serif;">Trading Summary Export — ${dateStr}</h2>
+                    ${summaryTable}
+                    <div style="height:20px"></div>
+                    ${categorySections}
+                </body>
+                </html>`;
+
+            const blob = new Blob([workbookHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `trading-summary-${dateStr}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // ----------------------
+        // Boot
+        // ----------------------
+        updateSummaryTable();
+        updateTradeDetails();
     </script>
 </body>
 </html>
