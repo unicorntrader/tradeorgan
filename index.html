@@ -510,24 +510,33 @@
         updateTradeDetails();
       }
     }
-// --- Helper: Fetch live price from Stooq ---
+// --- Helper: Fetch live price from Stooq (robust, lowercase, handles N/D) ---
 async function getLivePrice(ticker) {
-    const symbol = ticker.toLowerCase().endsWith(".us") ? ticker : `${ticker}.us`;
-    const url = `https://stooq.com/q/l/?s=${symbol}&f=sd2t2ohlcv&h&e=csv`;
+  if (!ticker) return "N/A";
 
-    try {
-        const resp = await fetch(url);
-        const text = await resp.text();
-        const rows = text.trim().split("\n");
-        if (rows.length < 2) return "N/A";
+  // normalize -> lowercase, add .us if no suffix
+  let base = String(ticker).trim().toLowerCase();
+  if (!base.includes('.')) base = `${base}.us`;
 
-        const cols = rows[1].split(",");
-        const price = parseFloat(cols[6]); // "Close" is column 6
-        return isNaN(price) ? "N/A" : price;
-    } catch (err) {
-        console.error(`Error fetching price for ${symbol}:`, err);
-        return "N/A";
-    }
+  const url = `https://stooq.com/q/l/?s=${base}&f=sd2t2ohlcv&h&e=csv`;
+
+  try {
+    const resp = await fetch(url, { cache: "no-store" });
+    const text = await resp.text();
+    const rows = text.trim().split(/\r?\n/);
+    if (rows.length < 2) return "N/A";
+
+    const cols = rows[1].split(",");
+    // Stooq will return "N/D" when no data; guard it
+    const closeStr = (cols[6] || "").trim(); // close column
+    const price = parseFloat(closeStr);
+    if (!isNaN(price)) return price;
+
+    return "N/A";
+  } catch (err) {
+    console.error(`Error fetching price for ${base}:`, err);
+    return "N/A";
+  }
 }
 
 // ----------------------
