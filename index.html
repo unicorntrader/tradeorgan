@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Interactive Trading Summary Builder</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; min-height: 100vh; padding: 20px; }
@@ -293,72 +294,143 @@
             updateTradeDetails();
         }
 
-        // ----------------------
-        // Import Handlers
-        // ----------------------
-        document.getElementById('file-upload').addEventListener('change', handleFileUpload);
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            try {
-                let data;
-                if (file.name.endsWith('.csv')) {
-                    const text = await file.text();
-                    data = parseCSV(text);
-                } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    alert('Excel parsing coming soon. Please use CSV format for now.');
-                    return;
-                }
-                if (data && data.length > 0) {
-                    const newTrades = await parseTradeData(data);
-                    if (newTrades.length > 0) {
-                        trades = [...trades, ...newTrades];
-                        updateSummaryTable();
-                        updateTradeDetails();
-                        alert(`Successfully imported ${newTrades.length} trades!`);
-                    }
-                }
-            } catch (error) {
-                console.error('Error parsing file:', error);
-                alert('Error parsing file. Please check the format and try again.');
-            }
-        }
+   // ----------------------
+// Import Handlers
+// ----------------------
+document.getElementById('file-upload').addEventListener('change', handleFileUpload);
 
-        function parseCSV(text) {
-            const lines = text.split(/\r?\n/);
-            if (!lines.length) return [];
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            const data = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i] || !lines[i].trim()) continue;
-                const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-                const row = {};
-                headers.forEach((header, index) => { row[header] = values[index] || ''; });
-                data.push(row);
-            }
-            return data;
-        }
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-        async function parseTradeData(data) {
-            const newTrades = [];
-            let tradeId = Math.max(...trades.map(t => t.id)) + 1;
-            for (const row of data) {
-                const date = row['Date'] || row['Trade Date'] || row['Entry Date'] || '';
-                const description = row['Description'] || row['Symbol'] || row['Action'] || '';
-                const amount = parseFloat(row['Amount'] || row['P&L'] || row['Profit/Loss'] || '0');
-                if (date && description && !isNaN(amount)) {
-                    let category = 'stock_trades';
-                    const desc = String(description).toLowerCase();
-                    if (desc.includes('put') && !desc.includes('assigned')) category = 'put_sales';
-                    else if (desc.includes('call')) category = 'asymmetric';
-                    else if (desc.includes('assigned') || desc.includes('assignment')) category = 'assigned_shares';
-                    else if (desc.includes('dividend') || desc.includes('interest')) category = 'income';
-                    else if (desc.includes('hedge') || desc.includes('tlt') || desc.includes('qqq')) category = 'hedging';
-                    newTrades.push({ id: tradeId++, date, action: description, amount, category });
-                }
-            }
-            return newTrades;
-        }
+  try {
+    let rows;
+
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      const text = await file.text();
+      rows = parseCSV(text);
+    } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    } else {
+      alert('Unsupported file type. Upload CSV or Excel (.xlsx/.xls).');
+      return;
+    }
+
+    if (!rows || rows.length === 0) {
+      alert('No rows found in the file.');
+      return;
+    }
+
+    const newTrades = await parseTradeData(rows);
+    if (newTrades.length > 0) {
+      trades = [...trades, ...newTrades];
+      selectedCategory = null; // optional reset of selection
+      updateSummaryTable();
+      updateTradeDetails();
+      alert(`Imported ${newTrades.length} trades.`);
+    } else {
+      alert('No tradable rows detected (skipped transfers/summaries).');
+    }
+  } catch (err) {
+    console.error('Import error:', err);
+    alert('Error reading file. Make sure columns match your template.');
+  } finally {
+    event.target.value = ''; // allow re-uploading same file
+  }
+}
+
+// Simple CSV → objects
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+  if (!lines.length) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',').map(v => v.trim().replace(/"/g,''));
+    const row = {};
+    headers.forEach((h, idx) => row[h] = vals[idx] ?? '');
+    rows.push(row);
+  }
+  return rows;
+}
+
+// Map broker rows → app trades
+async function parseTradeData(rows) {
+  const out = [];
+  let id = Math.max(0, ...trades.map(t => t.id)) + 1;
+
+  const money = v => {
+    if (v == null || v === '') return NaN;
+    return parseFloat(String(v)
+      .replace(/\$/g,'').replace(/,/g,'')
+      .replace(/\((.*)\)/, '-$1')); // (123.45) -> -123.45
+  };
+  const lower = v => String(v || '').toLowerCase();
+
+  for (const r of rows) {
+    // Your standardized headers
+    const date = r['Run Date'] || r['Date'] || '';
+    const action = String(r['Action'] || '').trim();
+    const description = String(r['Description'] || '').trim();
+    const amt = money(r['Amount']);
+    if (!date || !action) continue;
+
+    const a = lower(action);
+    const d = lower(description);
+    let category = null;
+    let pnl = null; // P&L cash effect we count
+
+    // Income
+    if (a.includes('dividend') || a.includes('interest')) {
+      category = 'income'; pnl = isNaN(amt) ? 0 : amt;
+    }
+    // Put sales (opening short puts)
+    else if (a.includes('you sold opening transaction') && a.includes(' put')) {
+      category = 'put_sales'; pnl = isNaN(amt) ? 0 : amt;
+    }
+    // Calls (asymmetric)
+    else if (a.includes('you bought opening transaction') && a.includes(' call')) {
+      category = 'asymmetric'; pnl = isNaN(amt) ? 0 : amt;
+    }
+    // Hedging (QQQ puts etc.)
+    else if (a.includes(' put') && (a.includes(' qqq') || d.includes(' qqq'))) {
+      category = 'hedging'; pnl = isNaN(amt) ? 0 : amt;
+    }
+    // Option closes / expirations
+    else if (a.includes('bought closing transaction') || a.includes('sold closing transaction') || a.startsWith('expired')) {
+      if (a.includes(' put')) category = 'put_sales';
+      else if (a.includes(' call')) category = 'asymmetric';
+      else category = 'stock_trades';
+      pnl = isNaN(amt) ? 0 : amt; // debit/credit or zero for expire
+    }
+    // Assignments from puts → neutral P&L here
+    else if (a.includes('bought assigned puts')) {
+      category = 'assigned_shares'; pnl = 0;
+    }
+    // Plain stock/ETF buys/sells → neutral
+    else if (a.startsWith('you bought ') || a.startsWith('you sold ')) {
+      category = 'stock_trades'; pnl = 0;
+    }
+    // Transfers / reinvest / cash moves → skip
+    else if (a.includes('electronic funds transfer') || a.includes('direct deposit') || a.includes('reinvestment')) {
+      continue;
+    } else {
+      continue;
+    }
+
+    out.push({
+      id: id++,
+      date,
+      action: description || action,
+      amount: pnl,
+      category
+    });
+  }
+  return out;
+}
 
         // ----------------------
         // XLS Export (Excel-compatible)
