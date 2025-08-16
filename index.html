@@ -582,34 +582,24 @@
         updateTradeDetails();
       }
     }
-// ----------------------
-// Live Price Helper (Stooq)
-// ----------------------
-async function fetchStockPrice(ticker) {
-    async function fetchFrom(symbol) {
-        try {
-            const url = `https://stooq.com/q/l/?s=${symbol.toLowerCase()}&f=sd2t2ohlcv&h&e=csv`;
-            const res = await fetch(url);
-            const text = await res.text();
-            const lines = text.split("\n");
-            if (lines.length > 1) {
-                const cols = lines[1].split(",");
-                const closePrice = parseFloat(cols[6]); // "Close" column
-                if (!isNaN(closePrice)) return closePrice;
-            }
-        } catch (err) {
-            console.error("Price fetch error for", symbol, err);
-        }
-        return null;
+// --- Helper: Fetch live price from Stooq ---
+async function getLivePrice(ticker) {
+    const symbol = ticker.toLowerCase().endsWith(".us") ? ticker : `${ticker}.us`;
+    const url = `https://stooq.com/q/l/?s=${symbol}&f=sd2t2ohlcv&h&e=csv`;
+
+    try {
+        const resp = await fetch(url);
+        const text = await resp.text();
+        const rows = text.trim().split("\n");
+        if (rows.length < 2) return "N/A";
+
+        const cols = rows[1].split(",");
+        const price = parseFloat(cols[6]); // "Close" is column 6
+        return isNaN(price) ? "N/A" : price;
+    } catch (err) {
+        console.error(`Error fetching price for ${symbol}:`, err);
+        return "N/A";
     }
-
-    // Try as-is
-    let price = await fetchFrom(ticker);
-    if (price !== null) return price;
-
-    // Retry with .US suffix
-    price = await fetchFrom(`${ticker}.us`);
-    return price;
 }
 
 // ----------------------
