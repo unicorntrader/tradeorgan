@@ -477,6 +477,18 @@
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         }
+        // ----------------------
+        // Reset Trades
+        // ----------------------
+        function resetTrades() {
+            if (confirm("Are you sure you want to wipe all trades? This cannot be undone.")) {
+                trades = [];
+                selectedCategory = null;
+                editingTrade = null;
+                updateSummaryTable();
+                updateTradeDetails();
+            }
+        }
 
         // ----------------------
         // Boot
