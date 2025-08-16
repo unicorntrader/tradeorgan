@@ -109,7 +109,6 @@
     // ----------------------
     // Data Model
     // ----------------------
-    // Start CLEAN: no demo trades
     let trades = [];
     let selectedCategory = null;
     let editingTrade = null;
@@ -225,6 +224,7 @@
 
       categoryTrades.forEach(trade => {
         const hasOptionMeta = trade && (trade.ticker || trade.expiry || trade.strike || trade.type);
+        const hasAssignMeta = trade.category === 'assigned_shares' && (typeof trade.avg_cost === 'number' || trade.assigned_shares);
         html += `
           <div class="trade-item ${editingTrade === trade.id ? 'editing' : ''}" id="trade-${trade.id}">
             <div class="trade-header">
@@ -234,9 +234,17 @@
                 ${hasOptionMeta ? `
                   <div class="trade-meta">
                     ${trade.ticker ? `Ticker: ${escapeHtml(trade.ticker)}` : ''}
-                    ${trade.type ? ` \u2022 Type: ${escapeHtml(trade.type)}` : ''}
-                    ${typeof trade.strike !== 'undefined' && trade.strike !== null && trade.strike !== '' ? ` \u2022 Strike: ${escapeHtml(String(trade.strike))}` : ''}
-                    ${trade.expiry ? ` \u2022 Expiry: ${escapeHtml(trade.expiry)}` : ''}
+                    ${trade.type ? ` • Type: ${escapeHtml(trade.type)}` : ''}
+                    ${typeof trade.strike !== 'undefined' && trade.strike !== null && trade.strike !== '' ? ` • Strike: ${escapeHtml(String(trade.strike))}` : ''}
+                    ${trade.expiry ? ` • Expiry: ${escapeHtml(trade.expiry)}` : ''}
+                  </div>` : ''}
+                ${hasAssignMeta ? `
+                  <div class="trade-meta">
+                    ${trade.ticker ? `Ticker: ${escapeHtml(trade.ticker)}` : ''}
+                    ${trade.assigned_shares ? ` • Assigned: ${escapeHtml(String(trade.assigned_shares))} sh` : ''}
+                    ${typeof trade.premium_applied === 'number' ? ` • Premium applied: ${formatCurrency(trade.premium_applied)}` : ''}
+                    ${typeof trade.assignment_cost === 'number' ? ` • Assignment cost: ${formatCurrency(trade.assignment_cost)}` : ''}
+                    ${typeof trade.avg_cost === 'number' ? ` • Avg cost: ${formatCurrency(trade.avg_cost)}` : ''}
                   </div>` : ''}
               </div>
               <div class="trade-controls">
@@ -289,7 +297,7 @@
         } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
           const buf = await file.arrayBuffer();
           const wb = XLSX.read(buf, { type: 'array' });
-          const sheet = wb.Sheets[wb.SheetNames[0]]; // default: first sheet
+          const sheet = wb.Sheets[wb.SheetNames[0]]; // first sheet for now
           rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
         } else {
           alert('Unsupported file type. Upload CSV or Excel (.xlsx/.xls).');
@@ -346,45 +354,32 @@
       };
       const lower = v => String(v || '').toLowerCase();
 
-      // Try two option description formats
-      function parseOptionDetails(description, actionText) {
-        if (!description && !actionText) return null;
-        const desc = String(description || actionText || '').trim();
+      // track net premium collected per ticker for assignments
+      const premiumByTicker = Object.create(null);
 
-        // Format A: "AAPL 08/23/2025 180.0 CALL"
-        const parts = desc.split(/\s+/);
-        if (parts.length >= 4 && /^(PUT|CALL)$/i.test(parts[parts.length-1])) {
-          const type = parts[parts.length-1].toUpperCase();
-          const strike = parseFloat(parts[parts.length-2]);
-          const expiry = parts[parts.length-3];
-          const ticker = parts[0].toUpperCase();
-          if (!isNaN(strike) && /\d{2}\/\d{2}\/\d{4}/.test(expiry)) {
-            const [mm, dd, yyyy] = expiry.split('/');
-            return { ticker, type, strike, expiry: `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}` };
-          }
-        }
-
-        // Format B: "PUT (BAH) ... JUL 18 25 $100"
-        const m = desc.match(/\b(PUT|CALL)\b\s*\(([^)]+)\)[^$\n]*\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2})\s+(\d{2})\s*\$(\d+(?:\.\d+)?)/i);
-        if (m) {
-          const type = m[1].toUpperCase();
-          const ticker = m[2].toUpperCase();
-          const mon = m[3].toUpperCase();
-          const day = m[4].padStart(2,'0');
-          const yy = m[5];
-          const strike = parseFloat(m[6]);
-          const months = {JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12'};
-          const expiry = `20${yy}-${months[mon]}-${day}`;
-          return { ticker, type, strike, expiry };
-        }
+      function extractTickerFromPut(desc, action) {
+        const s = String(desc || action || '');
+        let m = s.match(/\bPUT\b\s*\(([^)]+)\)/i);
+        if (m) return m[1].toUpperCase();
+        m = s.match(/\(([A-Z.]+)\)/);
+        if (m) return m[1].toUpperCase();
         return null;
       }
+      function extractTickerFromAssignment(action) {
+        const m = String(action||'').match(/Bought Assigned Puts in\s+([A-Z.]+)/i);
+        return m ? m[1].toUpperCase() : null;
+      }
 
-      // Process each row
+      // sort by date string (broker uses DD/MM/YYYY; still stable as string for same format)
+      const getDate = r => r['Run Date'] || r['Date'] || r['Trade Date'] || r['Entry Date'] || '';
+      rows.sort((a,b) => String(getDate(a)).localeCompare(String(getDate(b))));
+
       for (const r of rows) {
-        const date = r['Run Date'] || r['Date'] || r['Trade Date'] || r['Entry Date'] || '';
+        const date = getDate(r);
         const action = String(r['Action'] || '').trim();
         const description = String(r['Description'] || r['Symbol'] || '').trim();
+        const qty = Number(r['Quantity'] || 0);
+        const price = Number(r['Price'] || 0);
         const amt = money(r['Amount'] || r['P&L'] || r['Profit/Loss']);
         if (!date || !action) continue;
 
@@ -395,57 +390,64 @@
 
         // Income
         if (a.includes('dividend') || a.includes('interest')) {
-          category = 'income'; pnl = isNaN(amt) ? 0 : amt;
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'income' });
+          continue;
         }
-        // Put sales (opening)
-        else if (a.includes('you sold opening transaction') && a.includes(' put')) {
-          category = 'put_sales'; pnl = isNaN(amt) ? 0 : amt;
+        // Skip transfers/reinvest
+        if (a.includes('electronic funds transfer') || a.includes('direct deposit') || a.includes('reinvestment')) continue;
+
+        // Sold opening PUT → record premium
+        if (a.includes('you sold opening transaction') && a.includes(' put')) {
+          const tkr = extractTickerFromPut(description, action);
+          if (tkr) premiumByTicker[tkr] = (premiumByTicker[tkr] || 0) + (isNaN(amt) ? 0 : amt);
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'put_sales', ticker: tkr || undefined });
+          continue;
         }
         // Calls (asymmetric)
-        else if (a.includes('you bought opening transaction') && a.includes(' call')) {
-          category = 'asymmetric'; pnl = isNaN(amt) ? 0 : amt;
+        if (a.includes('you bought opening transaction') && a.includes(' call')) {
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'asymmetric' });
+          continue;
         }
-        // Hedging (e.g., QQQ puts)
-        else if (a.includes(' put') && (a.includes(' qqq') || d.includes(' qqq'))) {
-          category = 'hedging'; pnl = isNaN(amt) ? 0 : amt;
+        // Hedging catch
+        if (a.includes(' put') && (a.includes(' qqq') || d.includes(' qqq'))) {
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: 'hedging' });
+          continue;
         }
         // Option closes / expirations
-        else if (a.includes('bought closing transaction') || a.includes('sold closing transaction') || a.startsWith('expired')) {
-          if (a.includes(' put')) category = 'put_sales';
-          else if (a.includes(' call')) category = 'asymmetric';
-          else category = 'stock_trades';
-          pnl = isNaN(amt) ? 0 : amt;
-        }
-        // Assignments from puts → neutral P&L now
-        else if (a.includes('bought assigned puts')) {
-          category = 'assigned_shares'; pnl = 0;
-        }
-        // Stock/ETF buys/sells → neutral here
-        else if (a.startsWith('you bought ') || a.startsWith('you sold ')) {
-          category = 'stock_trades'; pnl = 0;
-        }
-        // Transfers / reinvestment → skip
-        else if (a.includes('electronic funds transfer') || a.includes('direct deposit') || a.includes('reinvestment')) {
-          continue;
-        } else {
+        if (a.includes('bought closing transaction') || a.includes('sold closing transaction') || a.startsWith('expired')) {
+          const cat = a.includes(' put') ? 'put_sales' : (a.includes(' call') ? 'asymmetric' : 'stock_trades');
+          out.push({ id: id++, date, action: description || action, amount: isNaN(amt)?0:amt, category: cat });
           continue;
         }
+        // Assignments → compute avg cost net of premiums received
+        if (a.includes('bought assigned puts')) {
+          const tkr = extractTickerFromAssignment(action) || extractTickerFromPut(description, action) || undefined;
+          const shares = Math.abs(qty) || 0;
+          const assignCost = Math.abs(isNaN(amt) ? (shares * price) : amt); // prefer Amount
+          const premium = tkr ? (premiumByTicker[tkr] || 0) : 0;
+          const netCost = shares ? (assignCost - premium) : 0;
+          const avgCost = shares ? (netCost / shares) : 0;
 
-        const opt = parseOptionDetails(description, action);
-        const trade = {
-          id: id++,
-          date,
-          action: description || action,
-          amount: pnl,
-          category
-        };
-        if (opt) {
-          trade.ticker = opt.ticker;
-          trade.expiry = opt.expiry;
-          trade.strike = opt.strike;
-          trade.type = opt.type;
+          out.push({
+            id: id++,
+            date,
+            action: description || action,
+            amount: 0, // P&L still zero here
+            category: 'assigned_shares',
+            ticker: tkr,
+            assigned_shares: shares,
+            assignment_cost: assignCost,
+            premium_applied: premium,
+            avg_cost: avgCost,
+            strike: price || undefined
+          });
+          continue;
         }
-        out.push(trade);
+        // Plain stock/ETF
+        if (a.startsWith('you bought ') || a.startsWith('you sold ')) {
+          out.push({ id: id++, date, action: description || action, amount: 0, category: 'stock_trades' });
+          continue;
+        }
       }
       return out;
     }
@@ -498,24 +500,47 @@
       const categorySections = Object.entries(categories).map(([key, info]) => {
         const rows = trades
           .filter(t => t.category === key)
-          .map(t => `
-            <tr>
-              <td>${escapeHtml(t.date)}</td>
-              <td>${escapeHtml(t.action)}${t.ticker ? ` ( ${escapeHtml(t.ticker)} ${escapeHtml(String(t.strike||''))} ${escapeHtml(t.type||'')} ${escapeHtml(t.expiry||'')} )` : ''}</td>
-              <td style="mso-number-format:'0.00'; text-align:right">${Number(t.amount).toFixed(2)}</td>
-            </tr>`).join('');
+          .map(t => {
+            if (key === 'assigned_shares') {
+              return `
+                <tr>
+                  <td>${escapeHtml(t.date)}</td>
+                  <td>${escapeHtml(t.ticker || '')}</td>
+                  <td style="text-align:right">${escapeHtml(String(t.assigned_shares || ''))}</td>
+                  <td style="mso-number-format:'0.00'; text-align:right">${typeof t.premium_applied==='number' ? Number(t.premium_applied).toFixed(2) : ''}</td>
+                  <td style="mso-number-format:'0.00'; text-align:right">${typeof t.assignment_cost==='number' ? Number(t.assignment_cost).toFixed(2) : ''}</td>
+                  <td style="mso-number-format:'0.00'; text-align:right">${typeof t.avg_cost==='number' ? Number(t.avg_cost).toFixed(2) : ''}</td>
+                </tr>`;
+            }
+            return `
+              <tr>
+                <td>${escapeHtml(t.date)}</td>
+                <td>${escapeHtml(t.action)}${t.ticker ? ` ( ${escapeHtml(t.ticker)} ${escapeHtml(String(t.strike||''))} ${escapeHtml(t.type||'')} ${escapeHtml(t.expiry||'')} )` : ''}</td>
+                <td style="mso-number-format:'0.00'; text-align:right">${Number(t.amount).toFixed(2)}</td>
+              </tr>`;
+          }).join('');
+
+        const thead = key === 'assigned_shares'
+          ? `<thead style="background:#e9ecef;"><tr>
+               <th style="text-align:left">Date</th>
+               <th style="text-align:left">Ticker</th>
+               <th style="text-align:right">Assigned (sh)</th>
+               <th style="text-align:right">Premium Applied</th>
+               <th style="text-align:right">Assignment Cost</th>
+               <th style="text-align:right">Avg Cost/Share</th>
+             </tr></thead>`
+          : `<thead style="background:#e9ecef;"><tr>
+               <th style="text-align:left">Date</th>
+               <th style="text-align:left">Action</th>
+               <th style="text-align:right">Amount</th>
+             </tr></thead>`;
+
         return `
           <h3 style="margin:20px 0 6px 0; font-family:Segoe UI, Tahoma, sans-serif;">${escapeHtml(info.name)}</h3>
           <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse; font-family:Segoe UI, Tahoma, sans-serif; font-size:12px;">
-            <thead style="background:#e9ecef;">
-              <tr>
-                <th style="text-align:left">Date</th>
-                <th style="text-align:left">Action</th>
-                <th style="text-align:right">Amount</th>
-              </tr>
-            </thead>
+            ${thead}
             <tbody>
-              ${rows || `<tr><td colspan="3" style="text-align:center; color:#6c757d">No trades</td></tr>`}
+              ${rows || `<tr><td colspan="${key==='assigned_shares'?6:3}" style="text-align:center; color:#6c757d">No trades</td></tr>`}
             </tbody>
           </table>`;
       }).join('');
