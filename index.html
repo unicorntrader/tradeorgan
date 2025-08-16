@@ -582,27 +582,34 @@
         updateTradeDetails();
       }
     }
-    // ----------------------
+// ----------------------
 // Live Price Helper (Stooq)
 // ----------------------
 async function fetchStockPrice(ticker) {
-    try {
-        const url = `https://stooq.com/q/l/?s=${ticker.toLowerCase()}.us&f=sd2t2ohlcv&h&e=csv`;
-        const res = await fetch(url);
-        const text = await res.text();
-
-        // Parse CSV (skip header)
-        const lines = text.split("\n");
-        if (lines.length > 1) {
-            const cols = lines[1].split(",");
-            const closePrice = parseFloat(cols[6]); // "Close" column
-            if (!isNaN(closePrice)) return closePrice;
+    async function fetchFrom(symbol) {
+        try {
+            const url = `https://stooq.com/q/l/?s=${symbol.toLowerCase()}&f=sd2t2ohlcv&h&e=csv`;
+            const res = await fetch(url);
+            const text = await res.text();
+            const lines = text.split("\n");
+            if (lines.length > 1) {
+                const cols = lines[1].split(",");
+                const closePrice = parseFloat(cols[6]); // "Close" column
+                if (!isNaN(closePrice)) return closePrice;
+            }
+        } catch (err) {
+            console.error("Price fetch error for", symbol, err);
         }
         return null;
-    } catch (err) {
-        console.error("Error fetching price for", ticker, err);
-        return null;
     }
+
+    // Try as-is
+    let price = await fetchFrom(ticker);
+    if (price !== null) return price;
+
+    // Retry with .US suffix
+    price = await fetchFrom(`${ticker}.us`);
+    return price;
 }
 
 // ----------------------
@@ -626,21 +633,21 @@ async function updateTradeDetails() {
     for (const trade of categoryTrades) {
         let extraInfo = "";
 
-        // Special handling for assigned shares from puts
-        if (trade.category === "assigned_shares" && trade.ticker && trade.avgCost) {
+        // Assigned Shares: show avg cost + live price + P&L
+        if (trade.category === "assigned_shares" && trade.ticker && typeof trade.avg_cost === "number") {
             const livePrice = await fetchStockPrice(trade.ticker);
             let pnlDisplay = "";
 
-            if (livePrice) {
-                const pnl = (livePrice - trade.avgCost) * trade.assignedShares;
+            if (livePrice !== null) {
+                const pnl = (livePrice - trade.avg_cost) * (trade.assigned_shares || 0);
                 pnlDisplay = `<div style="margin-top:6px; font-weight:bold; color:${pnl >= 0 ? '#198754' : '#dc3545'}">
-                                Live: $${livePrice.toFixed(2)} • P&L: $${pnl.toFixed(2)}
+                                Market: $${livePrice.toFixed(2)} • P&L: $${pnl.toFixed(2)}
                               </div>`;
             }
 
             extraInfo = `
                 <div style="margin-top:6px; font-size:14px; color:#495057">
-                    ${trade.ticker} • Avg cost: $${trade.avgCost.toFixed(2)} • Shares: ${trade.assignedShares}
+                    ${trade.ticker} • Avg cost: $${trade.avg_cost.toFixed(2)} • Shares: ${trade.assigned_shares}
                 </div>
                 ${pnlDisplay}
             `;
@@ -657,7 +664,7 @@ async function updateTradeDetails() {
                 </div>
                 <div class="trade-controls">
                     <div class="trade-amount ${trade.amount >= 0 ? 'positive' : 'negative'}">
-                        $${trade.amount.toFixed(2)}
+                        $${Number(trade.amount).toFixed(2)}
                     </div>
                     <button onclick="editTrade(${trade.id})">Edit</button>
                 </div>
