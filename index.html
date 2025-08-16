@@ -582,6 +582,90 @@
         updateTradeDetails();
       }
     }
+    // ----------------------
+// Live Price Helper (Stooq)
+// ----------------------
+async function fetchStockPrice(ticker) {
+    try {
+        const url = `https://stooq.com/q/l/?s=${ticker.toLowerCase()}.us&f=sd2t2ohlcv&h&e=csv`;
+        const res = await fetch(url);
+        const text = await res.text();
+
+        // Parse CSV (skip header)
+        const lines = text.split("\n");
+        if (lines.length > 1) {
+            const cols = lines[1].split(",");
+            const closePrice = parseFloat(cols[6]); // "Close" column
+            if (!isNaN(closePrice)) return closePrice;
+        }
+        return null;
+    } catch (err) {
+        console.error("Error fetching price for", ticker, err);
+        return null;
+    }
+}
+
+// ----------------------
+// Trade Details Renderer
+// ----------------------
+async function updateTradeDetails() {
+    const container = document.getElementById('trade-details');
+    container.innerHTML = "";
+
+    if (!selectedCategory) {
+        container.innerHTML = `<p>Select a category from the table to view details.</p>`;
+        return;
+    }
+
+    const categoryTrades = trades.filter(t => t.category === selectedCategory);
+    if (!categoryTrades.length) {
+        container.innerHTML = `<p>No trades available for this category.</p>`;
+        return;
+    }
+
+    for (const trade of categoryTrades) {
+        let extraInfo = "";
+
+        // Special handling for assigned shares from puts
+        if (trade.category === "assigned_shares" && trade.ticker && trade.avgCost) {
+            const livePrice = await fetchStockPrice(trade.ticker);
+            let pnlDisplay = "";
+
+            if (livePrice) {
+                const pnl = (livePrice - trade.avgCost) * trade.assignedShares;
+                pnlDisplay = `<div style="margin-top:6px; font-weight:bold; color:${pnl >= 0 ? '#198754' : '#dc3545'}">
+                                Live: $${livePrice.toFixed(2)} • P&L: $${pnl.toFixed(2)}
+                              </div>`;
+            }
+
+            extraInfo = `
+                <div style="margin-top:6px; font-size:14px; color:#495057">
+                    ${trade.ticker} • Avg cost: $${trade.avgCost.toFixed(2)} • Shares: ${trade.assignedShares}
+                </div>
+                ${pnlDisplay}
+            `;
+        }
+
+        const div = document.createElement("div");
+        div.className = "trade-item";
+        div.innerHTML = `
+            <div class="trade-header">
+                <div class="trade-info">
+                    <div class="trade-date">${trade.date}</div>
+                    <div class="trade-action">${trade.action}</div>
+                    ${extraInfo}
+                </div>
+                <div class="trade-controls">
+                    <div class="trade-amount ${trade.amount >= 0 ? 'positive' : 'negative'}">
+                        $${trade.amount.toFixed(2)}
+                    </div>
+                    <button onclick="editTrade(${trade.id})">Edit</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+}
 
     // ----------------------
     // Boot
