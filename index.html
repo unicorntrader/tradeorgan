@@ -193,79 +193,7 @@
       updateTradeDetails();
     }
 
-    function updateTradeDetails() {
-      const detailsContainer = document.getElementById('trade-details');
-      if (!selectedCategory) {
-        detailsContainer.innerHTML = `
-          <div class="placeholder">
-            <div class="placeholder-icon">📊</div>
-            <h3>Select a Category</h3>
-            <p>Click on any category in the summary table to view and edit its trades.</p>
-            <div class="features-box">
-              <h4>Tips:</h4>
-              <ul>
-                <li>Click any category row to view its trades</li>
-                <li>Edit individual trade amounts and categories</li>
-                <li>Summary updates automatically as you make changes</li>
-                <li>Move trades between categories by editing them</li>
-              </ul>
-            </div>
-          </div>
-        `;
-        return;
-      }
 
-      const categoryInfo = categories[selectedCategory];
-      const categoryTrades = trades.filter(trade => trade.category === selectedCategory);
-      let html = `
-        <h3 class="category-title" style="color:${categoryInfo.color}">${escapeHtml(categoryInfo.name)}</h3>
-        <div>
-      `;
-
-      categoryTrades.forEach(trade => {
-        const hasOptionMeta = trade && (trade.ticker || trade.expiry || trade.strike || trade.type);
-        const hasAssignMeta = trade.category === 'assigned_shares' && (typeof trade.avg_cost === 'number' || trade.assigned_shares);
-        html += `
-          <div class="trade-item ${editingTrade === trade.id ? 'editing' : ''}" id="trade-${trade.id}">
-            <div class="trade-header">
-              <div class="trade-info">
-                <div class="trade-date">${escapeHtml(trade.date)}</div>
-                <div class="trade-action">${escapeHtml(trade.action)}</div>
-                ${hasOptionMeta ? `
-                  <div class="trade-meta">
-                    ${trade.ticker ? `Ticker: ${escapeHtml(trade.ticker)}` : ''}
-                    ${trade.type ? ` • Type: ${escapeHtml(trade.type)}` : ''}
-                    ${typeof trade.strike !== 'undefined' && trade.strike !== null && trade.strike !== '' ? ` • Strike: ${escapeHtml(String(trade.strike))}` : ''}
-                    ${trade.expiry ? ` • Expiry: ${escapeHtml(trade.expiry)}` : ''}
-                  </div>` : ''}
-                ${hasAssignMeta ? `
-                  <div class="trade-meta">
-                    ${trade.ticker ? `Ticker: ${escapeHtml(trade.ticker)}` : ''}
-                    ${trade.assigned_shares ? ` • Assigned: ${escapeHtml(String(trade.assigned_shares))} sh` : ''}
-                    ${typeof trade.premium_applied === 'number' ? ` • Premium applied: ${formatCurrency(trade.premium_applied)}` : ''}
-                    ${typeof trade.assignment_cost === 'number' ? ` • Assignment cost: ${formatCurrency(trade.assignment_cost)}` : ''}
-                    ${typeof trade.avg_cost === 'number' ? ` • Avg cost: ${formatCurrency(trade.avg_cost)}` : ''}
-                  </div>` : ''}
-              </div>
-              <div class="trade-controls">
-                <div class="trade-amount ${Number(trade.amount) >= 0 ? 'positive' : 'negative'}">${formatCurrency(trade.amount)}</div>
-                ${editingTrade === trade.id ? `
-                  <div class="edit-form">
-                    <select id="category-select-${trade.id}">
-                      ${Object.entries(categories).map(([key, info]) => `<option value="${key}" ${key === trade.category ? 'selected' : ''}>${escapeHtml(info.name)}</option>`).join('')}
-                    </select>
-                    <input type="number" step="0.01" id="amount-input-${trade.id}" value="${Number(trade.amount)}" />
-                    <button class="btn btn-success" onclick="saveTradeEdit(${trade.id})">Done</button>
-                  </div>` : `<button class="btn" onclick="editTrade(${trade.id})">Edit</button>`}
-              </div>
-            </div>
-          </div>
-        `;
-      });
-
-      html += '</div>';
-      detailsContainer.innerHTML = html;
-    }
 
     function editTrade(tradeId) { editingTrade = tradeId; updateTradeDetails(); }
     function saveTradeEdit(tradeId) {
