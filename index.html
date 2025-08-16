@@ -603,65 +603,76 @@ async function getLivePrice(ticker) {
 }
 
 // ----------------------
-// Trade Details Renderer
+// Trade Details Renderer (single source of truth)
 // ----------------------
 async function updateTradeDetails() {
-    const container = document.getElementById('trade-details');
-    container.innerHTML = "";
+  const container = document.getElementById('trade-details');
+  container.innerHTML = "";
 
-    if (!selectedCategory) {
-        container.innerHTML = `<p>Select a category from the table to view details.</p>`;
-        return;
+  if (!selectedCategory) {
+    container.innerHTML = `
+      <div class="placeholder">
+        <div class="placeholder-icon">📊</div>
+        <h3>Select a Category</h3>
+        <p>Click on any category in the summary table to view and edit its trades.</p>
+      </div>`;
+    return;
+  }
+
+  const categoryTrades = trades.filter(t => t.category === selectedCategory);
+  if (!categoryTrades.length) {
+    container.innerHTML = `<p>No trades available for this category.</p>`;
+    return;
+  }
+
+  for (const trade of categoryTrades) {
+    let extraInfo = "";
+
+    // Assigned Shares: show avg cost + market price + P&L
+    if (trade.category === "assigned_shares" && trade.ticker && typeof trade.avg_cost === "number") {
+      const live = await getLivePrice(trade.ticker); // <-- uses your helper
+      const shares = Number(trade.assigned_shares || 0);
+
+      const marketLine = (typeof live === "number")
+        ? `Market: $${live.toFixed(2)}`
+        : `Market: N/A`;
+
+      let pnlLine = "";
+      if (typeof live === "number") {
+        const pnl = (live - trade.avg_cost) * shares;
+        pnlLine = `<div style="font-weight:bold; color:${pnl >= 0 ? '#198754' : '#dc3545'}">P&L: $${pnl.toFixed(2)}</div>`;
+      }
+
+      extraInfo = `
+        <div style="margin-top:6px; font-size:14px; color:#495057">
+          ${trade.ticker} • Avg cost: $${trade.avg_cost.toFixed(2)} • Shares: ${shares}
+        </div>
+        <div style="margin-top:4px">${marketLine}</div>
+        ${pnlLine}
+      `;
     }
 
-    const categoryTrades = trades.filter(t => t.category === selectedCategory);
-    if (!categoryTrades.length) {
-        container.innerHTML = `<p>No trades available for this category.</p>`;
-        return;
-    }
+    const amt = Number(trade.amount) || 0;
 
-    for (const trade of categoryTrades) {
-        let extraInfo = "";
-
-        // Assigned Shares: show avg cost + live price + P&L
-        if (trade.category === "assigned_shares" && trade.ticker && typeof trade.avg_cost === "number") {
-            const livePrice = await fetchStockPrice(trade.ticker);
-            let pnlDisplay = "";
-
-            if (livePrice !== null) {
-                const pnl = (livePrice - trade.avg_cost) * (trade.assigned_shares || 0);
-                pnlDisplay = `<div style="margin-top:6px; font-weight:bold; color:${pnl >= 0 ? '#198754' : '#dc3545'}">
-                                Market: $${livePrice.toFixed(2)} • P&L: $${pnl.toFixed(2)}
-                              </div>`;
-            }
-
-            extraInfo = `
-                <div style="margin-top:6px; font-size:14px; color:#495057">
-                    ${trade.ticker} • Avg cost: $${trade.avg_cost.toFixed(2)} • Shares: ${trade.assigned_shares}
-                </div>
-                ${pnlDisplay}
-            `;
-        }
-
-        const div = document.createElement("div");
-        div.className = "trade-item";
-        div.innerHTML = `
-            <div class="trade-header">
-                <div class="trade-info">
-                    <div class="trade-date">${trade.date}</div>
-                    <div class="trade-action">${trade.action}</div>
-                    ${extraInfo}
-                </div>
-                <div class="trade-controls">
-                    <div class="trade-amount ${trade.amount >= 0 ? 'positive' : 'negative'}">
-                        $${Number(trade.amount).toFixed(2)}
-                    </div>
-                    <button onclick="editTrade(${trade.id})">Edit</button>
-                </div>
-            </div>
-        `;
-        container.appendChild(div);
-    }
+    const div = document.createElement("div");
+    div.className = "trade-item";
+    div.innerHTML = `
+      <div class="trade-header">
+        <div class="trade-info">
+          <div class="trade-date">${escapeHtml(trade.date)}</div>
+          <div class="trade-action">${escapeHtml(trade.action)}</div>
+          ${extraInfo}
+        </div>
+        <div class="trade-controls">
+          <div class="trade-amount ${amt >= 0 ? 'positive' : 'negative'}">
+            $${amt.toFixed(2)}
+          </div>
+          <button class="btn" onclick="editTrade(${trade.id})">Edit</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  }
 }
 
     // ----------------------
